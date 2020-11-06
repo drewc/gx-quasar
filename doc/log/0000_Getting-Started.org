@@ -1,0 +1,1004 @@
+#+TITLE: gx-quasar->GxQuasar: a simple idea to Gerbilize Javascript
+
+I've been a *[back|middle|front]*-end web developer for pretty much my entire
+career. For the last 16 years or so ([2020-10-30 Fri] is today) I've used Lisp.
+
+Javascript was actually developed based on scheme and prototyped in Common
+Lisp[fn:1]. I program in Gerbil Scheme[fn:2] whenever possible and the idea of
+using it for browser development certainly piqued my interest.
+
+This is an outline of the first attempt.
+
+* Install Quasar
+
+My main use of the browser is a GUI for my systems. My laptop and servers run
+NixOS[fn:3]. We'll use the unstable ~<nixpkgs>~.
+
+#+begin_src shell
+nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+nix-channel --update
+#+end_src
+
+NodeJS 12 and yarn are the current choices.
+#+begin_src shell
+nix-env -iA nixpkgs.yarn nixpkgs.yarn2nix nixpkgs.nodejs-12_x
+#+end_src
+
+https://quasar.dev/quasar-cli/installation is a quick read but in essence:
+
+#+begin_src shell
+  yarn global add @quasar/cli
+  # in ~/.bashrc or equivalent
+  export PATH="$(yarn global bin):$PATH"
+
+  LD=$CC yarn install
+#+end_src
+
+The ~LD=$CC~ is so the builder can find the libraries it wants. So create a
+project.
+
+#+begin_src shell
+LD=$CC quasar create
+#  [...]
+#  [*] Quasar Project initialization finished!
+#+end_src
+
+We'll also use it for dev.
+
+#+begin_src shell
+LD=$CC quasar dev
+#+end_src
+
+* Hello World! Let's get easy.
+
+Gerbil uses Gambit Scheme[fn:4] as its backend/compiler. Gambit recently got a
+universal backend where it can compile to anything, and JavaScript AKA ~js~ is
+one of its targets.
+
+https://mailman.iro.umontreal.ca/pipermail/gambit-list/2020-March/009363.html is
+a great overview.
+
+Marc Feeley goes into some detail here:
+https://gitter.im/gambit/gambit?at=5bc7fb95435c2a518ec448d1
+
+One things I do want to avoid is having to load the entire Gambit system (30MB+)
+every time I use it. It's very easy to do.
+
+** ~hello-world-rt~ and ~hello-world.ss~ : The hello world program
+
+First our custom runtime library. We'll simply use gerbil and have nothing in
+it.
+
+By "nothing" I mean one function that runs at the very end of things and
+initializes each gambit "module".
+
+The ~(declare (extended-bindings))~ is for the ~##~ functions. Because we are
+not using gambit for our runtime that's needed.
+
+#+begin_src scheme :tangle ../../gx/hello-world-rt.ss
+(declare (extended-bindings))
+
+(def (run-each-module)
+  (declare (extended-bindings) (not safe))
+  (let ((mods (##vector-ref ##program-descr 0)))
+    (let loop ((i 1)) ;; start at module after the current one
+      (if (##fx< i (##vector-length mods))
+            (let ((mod (##vector-ref mods i)))
+              ((##vector-ref mod 4)) ;; call module's init procedure
+              (loop (##fx+ i 1)))))))
+
+(run-each-module) ;; run each module (after the current one)
+#+end_src
+
+Because we are using gerbil but want to use gambit as well, although ~gxc~ does
+allow things to pass to ~gsc~, we'll simply do it manually.
+
+Passing the ~-v -d . -S -static~ options tell ~gxc~ that we want things our way.
+
+    - -v :: Be verbose
+    - -d . :: Output to the current directory
+    - -S . :: Don't invoke ~gsc~, we'll do it
+    - -static :: output a gambit scheme file that is what ~gxc~ would have
+       output.
+
+#+begin_src shell
+gxc -v -d . -S -static hello-world-rt.ss
+# compile hello-world-rt.ss
+# compile hello-world-rt
+# compile ./hello-world-rt__0.scm
+# copy static module ./hello-world-rt__0.scm => ./static/hello-world-rt.scm
+# compile ./hello-world-rt__rt.scm
+# compile ./hello-world-rt.ssi
+rm hello-world-rt.ssi
+#+end_src
+
+Now time to play a gambit and output ~js~. We'll use ~gsc~ with the following.
+
+   - -verbose :: Verbosity is always a good thing while learning/debugging.
+   - -target js :: Aim for JavaScript!!
+   - -c :: Compile to target language source files (.c, .js, ...)
+   - -o :: Output to this file please
+
+
+#+begin_src shell
+gsc -verbose -target js -c -o hello-world-rt.js static/hello-world-rt.scm
+#+end_src
+
+That leaves us with a very small runtime! ~8k~.
+
+#+begin_src shell
+du hello-world-rt.js -h
+# 8.0K    hello-world-rt.js
+#+end_src
+
+It doesn't actually do anything. A simple gerbil file that allows us to ~alert~
+with a message from ~js~, AKA ~host~ will be our first attempt at *FFI*.
+
+#+begin_src scheme :tangle ../../gx/hello-world.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(def (alert str)
+  (##inline-host-statement "alert('Hello!! ' + g_scm2host(@1@));" str))
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn(arg)
+}"
+ (lambda (str) (alert str)))
+#+end_src
+
+That introduces functions.
+
+  - ~##inline-host-statement~ :: A scheme function that takes a constant string
+    and optionally arguments to place inside that statement that are marked with the ~@N@~ replacement string.
+  - g_scm2host(...) :: A ~js~ function which takes a scheme primitive and turns
+    it into a javascript primitive.
+
+Let's make it into a ~js~ file! First the normal ~gxc~
+
+#+begin_src shell
+gxc -d . -S -static hello-world.ss
+rm hello-world.ssi
+#+end_src
+
+And now for something different.
+
+  - - l hello-world-rt :: Link to our runtime as the base library to use
+  - -exe :: Output an executable file that contains everything needed.
+
+#+begin_src shell
+gsc -target js -l hello-world-rt -exe -o hello-world.js static/hello-world.scm
+cp hello-world.js ../public/
+ #+end_src
+
+The generated JS does not pass ~eslint~, and we have that set up for quasar in
+order to be dev friendly.
+
+
+Let's get rid of eslint for that public directory. Look for this in
+~quasar.conf.js~ and edit the exclude.
+
+#+begin_src js
+      // https://quasar.dev/quasar-cli/handling-webpack
+      extendWebpack (cfg) {
+        cfg.module.rules.push({
+          enforce: 'pre',
+          test: /\.(js|vue)$/,
+          loader: 'eslint-loader',
+          exclude: /(node_modules|public)/
+        })
+      }
+#+end_src
+
+
+Everything is now For The Web! So let's make a *Quasar* page that hellos our
+world.
+
+#+begin_src vue :tangle ../../src/pages/Index.vue
+<template>
+  <q-page class="flex flex-center">
+    <q-btn color="red" @click="Hello('World!')"> Hello World</q-btn>
+  </q-page>
+</template>
+
+<script>
+import { Hello } from 'app/public/hello-world.js'
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      Hello(arg)
+    }
+  }
+}
+</script>
+#+end_src
+
+It actually works! for ~20k~ I can have scheme in the browser. That means a lot!
+
+#+begin_src shell
+du -h hello-world.js
+# 20.0K   hello-world.js
+#+end_src
+
+* ~hello-gxjs-rt~: Things get a little harder.
+
+One thing I desire is the ability to load on demand as well as use both languages the way they are meant to be used. Anyone familiar with *FFI* knows this is never easy.
+
+In this case the first thing that pops up is *modules*. ~js~ has them, ~gerbil~ has them, ~gambit~ has them, and they all differ.
+
+Because we want to use ~gerbil~ and ~js~ with ~gambit~ being a distant cousin we
+have to mess around.
+
+#+begin_src scheme :tangle ~/me/ecm/src/gx-quasar/gx/hello-gxjs-rt.ss
+namespace: gxjs
+(declare (extended-bindings))
+
+(def (alert thing) (##inline-host-statement "var foo = (@1@);
+  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
+  alert(bar);" thing))
+(def (console.log obj) (##inline-host-statement "console.log((@1@))" obj))
+
+(def (gambit-module-name mod)
+  (def obj (##vector-ref (##vector-ref mod 0) 0))
+  (##inline-host-expression "(@1@).name" obj))
+
+(def (init-gambit-module mod)
+  (let ((init (##vector-ref mod 4)))
+    (if (not (##procedure? init)) (error "No init for " mod)
+      (init))))
+
+(define (init-gambit-program)
+  (declare (extended-bindings) (not safe))
+    (let ((mods (##vector-ref ##program-descr 0)))
+      (let loop ((i 1)) ;; start at module after the current one
+        (if (##fx< i (##vector-length mods))
+            (let ((mod (##vector-ref mods i)))
+              (init-gambit-module mod) ;; call module's init procedure
+              (loop (##fx+ i 1)))))))
+
+(init-gambit-program)
+
+(##inline-host-declaration "
+gx_old_module_register = g_module_register;
+
+gx_gambit_module_table = [];
+
+gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }
+
+gx_gambit_module_register = function (module_descr) {
+  gx_gambit_module_table.push(module_descr);
+  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)
+    : gx_old_module_register(module_descr)
+}
+
+g_module_register = gx_gambit_module_register;
+
+console.log(g_module_register);
+
+")
+
+(##inline-host-statement "gx_gambit_module_init = (g_scm2host(@1@))" (lambda (mod) (init-gambit-module mod)))
+#+end_src
+
+
+** ~hello.ss~ a Gerbil scheme file with our new runtime lib
+
+#+begin_src scheme :tangle ../../gx/hello.ss
+(declare (extended-bindings))
+(extern namespace: gxjs alert)
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Hello ' + arg)
+}"
+ (lambda (str) (alert str)))
+#+end_src
+
+** ~gambit-module-test.ss~: A module not loaded in the gambit program
+
+#+begin_src scheme :tangle ../../gx/gambit-module-test.ss
+(declare (extended-bindings))
+(extern namespace: gxjs alert console.log)
+
+(##inline-host-statement
+ "exports.Test = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Test' + arg)
+}"
+ (lambda (str)
+   (let* ((mod (##inline-host-expression "gx_gambit_module_table[1];"))
+          (name (gxjs#gambit-module-name mod)))
+     (console.log mod)
+
+     (alert str) (alert name))))
+#+end_src
+
+** Now compilation to different ~js~ files!
+
+#+begin_src shell
+gxc -v -d . -S -static hello-gxjs-rt.ss
+gxc -v -d . -S -static hello.ss
+gxc -v -d . -S -static gambit-module-test.ss
+
+gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm
+
+# Now output the modules test as a standalone
+gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+
+# and copy to public
+
+cp hello-gxjs.js gambit-module-test.js ../public
+
+#+end_src
+
+** The new ~Index.vue~
+
+
+#+begin_src vue :tangle ../../src/pages/hello-gxjs-Index.vue
+<template>
+  <q-page class="flex flex-center">
+    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+  </q-page>
+</template>
+
+<script>
+
+import { Hello } from 'app/public/hello-gxjs.js'
+
+import { Test } from 'app/public/gambit-module-test.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    }
+  }
+}
+</script>
+#+end_src
+And it works! Yay!
+
+* Full on *Gambit Scheme*
+
+https://udem-dlteam.github.io/webapp-tutorial/ and
+https://github.com/udem-dlteam/webapp-tutorial are wonderful places to start. It
+basically shows we can have a full gambit-in-browser.
+
+
+Let's build our hello with a full gambit and see.
+
+#+begin_src shell
+bash <<EOF
+gxc -v -d . -S -static gambit-hello-world.ss
+gxc -v -d . -S -static gambit-hello-world-module-test.ss
+gsc -target js -exe -o gambit-hello-world.js static/gambit-hello-world.scm
+gsc -target js -o gambit-hello-world-module-test.js static/gambit-hello-world-module-test.scm
+cp gambit-hello-world*.js ../public/
+EOF
+#+end_src
+
+#+begin_src scheme :tangle ../../gx/gambit-hello-world.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+  alert('Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(def (init-gambit-module mod)
+  (let ((init (##vector-ref mod 4)))
+    (if (not (##procedure? init)) (error "No init for " mod)
+      (init))))
+
+(##inline-host-declaration "
+gx_old_module_register = g_module_register;
+
+gx_gambit_module_table = [];
+
+gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }
+
+gx_gambit_module_register = function (module_descr) {
+  gx_gambit_module_table.push(module_descr);
+  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)
+    : gx_old_module_register(module_descr)
+}
+
+g_module_register = gx_gambit_module_register;
+
+console.log(g_module_register);
+
+")
+
+(##inline-host-statement "gx_gambit_module_init = (g_scm2host(@1@))" (lambda (mod) (init-gambit-module mod)))
+
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "g_sourceCodeRun = g_scm2host(@1@);" sourceCodeRun)
+
+#+end_src
+
+#+begin_src scheme :tangle ../../gx/gambit-hello-world-module-test.ss
+(declare (extended-bindings))
+(##inline-host-statement
+ "exports.Test = (arg) => {
+  alert('Test' + arg)
+}"
+)
+#+end_src
+
+#+begin_src vue :tangle ../../src/pages/gambitHelloIndex.vue
+<template>
+  <q-page>
+    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+    <br>
+    <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+    534
+   </div>
+    <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+  </q-page>
+</template>
+
+<script>
+
+import { Hello } from 'app/public/gambit-hello-world.js'
+
+import { Test } from 'app/public/gambit-hello-world-module-test.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=>' + val)
+    }
+  }
+}
+</script>
+#+end_src
+
+
+* Lazy-load ~_gambit.js~.
+
+That works as well. So, now, an attempt to make the Gambit ~_gambit~ module
+become a dynamically loaded ~js~ module.
+
+
+#+begin_src scheme :tangle ../../gx/lazy-gambit-repl.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.evalElement = (arg) => {
+  alert('Lazy? Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "g_sourceCodeRun = g_scm2host(@1@);" sourceCodeRun)
+
+#+end_src
+
+** First attempt
+
+We'll simply try to insert it at the end of our custom run-time. It does not
+actually work but gives us great insights as to why.
+
+#+begin_src shell
+bash <<'EOF'
+ gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+
+ gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+ gsc -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm
+
+ # Now output the modules test as a standalone
+ gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+
+ # Ok, now the lazy gambit repl
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+
+ # and copy to public, including the _gambit.js
+
+ _gambit_js=$(gsc -e '(display (path-expand "~~lib/"))')/_gambit.js;
+ _cp="cp hello-gxjs.js lazy-gambit-repl.js gambit-module-test.js $_gambit_js ../public";
+ echo Copy $_cp; $_cp
+
+EOF
+#+end_src
+
+It fails in the browser with
+   : ReferenceError: G_Bignum is not defined
+
+Is that because our runtime lib does not require that but _gambit.js does? We'll
+use the ~-verbose~ and ~-keep-temp~ flags to find out.
+
+#+begin_src shell
+bash <<'EOF'
+
+ gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+ gxc -v -d . -S -static gambit-hello-world-module-test.ss
+ gxc -v -d . -S -static gambit-hello-world.ss
+
+ gsc -target js -o gambit-hello-world-module-test.js static/gambit-hello-world-module-test.scm
+
+ # Now output the modules test as a standalone
+ gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+
+ # Ok, now the lazy gambit repl
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+
+ gsc -verbose -keep-temp -target js -exe -o gambit-hello-world.js static/gambit-hello-world.scm
+
+ gsc -verbose -keep-temp -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm
+EOF
+#+end_src
+
+That ends up giving us some interesting details.
+
+   : cat static/gambit-hello-world_.o static/gambit-hello-world.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" > "gambit-hello-world.js"
+   : cat static/hello_.o static/hello.o "hello-gxjs-rt.js" > "hello-gxjs.js"
+
+   The ~*_.o~ files are generated by the complier. Here are the options.
+
+   #+begin_quote
+   Output mode
+    -target l   Select target language to compile to (C, js, x86-64, ...)
+    -c          Compile to target language source files (.c, .js, ...)
+    -link       Generate a link file combining a set of compiled files
+    -obj        Compile to object files (.o, .obj)
+    -exe        Compile to an executable program or script
+    -dynamic    Compile to a .oN dynamically loadable file (default mode)
+   #+end_quote
+
+   Interesting! What happens with ~-link~?
+
+   #+begin_src shell
+gsc -verbose -keep-temp -target js -link -o gambit-hello-world-link.js static/gambit-hello-world.scm
+
+# This does not have any files to "-keep-temp"! That's a good thing.
+
+wc gambit-hello-world-link.js static/gambit-hello-world_.js
+     1518      8271    112123 gambit-hello-world-link.js
+     1518      8271    112119 static/gambit-hello-world_.js
+     3036     16542    224242 total
+
+   #+end_src
+
+That's brilliant. 4 char difference? Hmmmm.
+
+#+begin_src shell
+ bash <<'EOF'
+_lnk='gambit-hello-world-link'
+_under='gambit-hello-world_'
+
+echo char diff? => $(expr `echo $_lnk | wc -c` - `echo $_under |wc -c`)
+>
+EOF
+
+  # char diff? => 4
+
+#+end_src
+
+Beyond the file name they are identical as a ~diff~ shows us.
+
+The differences between those and our ~hello_.js~ generated link file are
+immense.
+
+#+begin_src shell
+du -k gambit-hello-world-link.js static/hello_.js
+# 112     gambit-hello-world-link.js
+# 12      static/hello_.js
+
+#+end_src
+
+An extra 100k is a hellovalot. Can that one work with our existing hello?
+
+A quick ~diff gambit-hello-world-link.js static/hello_.js~ has almost all ~-~
+lines besides the second line which is a comment that Gambit generates/uses and
+the last line.
+
+The last line is likely the crucial one. With a wee bit of know-how about how
+gambit modules run/interact etc it makes perfect sense.
+
+#+begin_src diff
+-g_module_registry_init([new G_ModLinkInfo("_gambit",0),new G_ModLinkInfo("gambit-hello-world",1)]);
++g_module_registry_init([new G_ModLinkInfo("hello-gxjs-rt",0),new G_ModLinkInfo("hello",1)]);
+#+end_src
+
+A different module registry seems to define when/how/if a "module" is
+initialized by the run time.
+
+Here is the ~js~.
+
+#+begin_src javascript
+g_module_registry_init = function (link_info) {
+  var n = link_info.length;
+  var i = 0;
+  g_module_table = new Array(n);
+  while (i < n) {
+    var info = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = null;
+    ++i;
+  }
+};
+#+end_src
+
+Now every gambit module registers itself at the EOF.
+
+#+begin_src shell
+grep '^g_module_register' static/hello.js
+g_module_register([[g_make_interned_symbol("hello")],[],null,1,g_bb1_hello_23_,false]);
+#+end_src
+
+The source for that is brilliant as it tells me what I need to know and why we
+had to init the way we did. The comments are all mine.
+
+#+begin_src javascript
+g_module_register = function (module_descr) {
+
+  // The interned symbol of the name in an array
+
+  var temp = module_descr[0];
+
+  // the name of the module.
+  var name = temp[temp.length - 1].name;
+
+  // Search for it in the module registry by name.
+  var info = Object.prototype.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : null;
+
+  // Set the latest registered to this module
+  g_module_latest_registered = module_descr;
+
+  // If we are not waiting for this module OR we already have all we are waiting
+  // for, ignore it.
+
+  if (!(info === null || g_module_count === g_module_table.length)) {
+
+    // on initialization we gave this an index and a name.
+    var index = info.index;
+    // If this is already registered, let us know.
+    var old = g_module_table[index];
+
+    // regardless, this new module is in the table.
+
+    g_module_table[index] = module_descr;
+
+    // If there was no old, increase the count and continue.
+    if (old === null) {
+      ++g_module_count;
+      // If we have all the modules, let the program
+      if (g_module_count === g_module_table.length) {
+        // set the global ##program-descr to an array of the module table and
+        // two other things I do not understand.
+        g_glo["##program-descr"] = [g_module_table,null,false];
+
+        // This is the arrey of a symbol that names the last module in the
+        // init.
+        temp = g_module_table[g_module_table.length - 1][0];
+        g_glo["##vm-main-module-ref"] = temp[temp.length - 1];
+
+        // I think this is the prefix to running a function via the trampoline
+        g_sp = -1;
+        g_stack[++g_sp] = void 0;
+        g_r0 = g_underflow;
+        g_nargs = 0;
+
+        // This runs the init procedure of the first registry_init we specifed.
+
+        g_trampoline(g_module_table[0][4]);
+      }
+    }
+  }
+};
+
+#+end_src
+
+That helps a lot! We already test and initialize them on their own when the
+registry is full. Knowing the order they are initialized we can simply replace
+the init function.
+
+
+
+#+begin_src shell
+gxc -v -d . -S -static link-gxjs-rt.ss
+gxc -v -d . -S -static hello-world.ss
+gsc -target js -c -o link-gxjs-rt.js static/link-gxjs-rt.scm
+gsc -target js -l link-gxjs-rt -link -o link-hello-world.js static/hello-world.scm
+#+end_src
+
+** Second Attempt: Make/change link files.
+
+First, our normal hello-gxjs
+
+#+begin_src shell
+ gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+#+end_src
+
+Now make a ~-link~ rather than an ~-exe~. We'll follow the gambit "end with _".
+#+begin_src shell
+gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o REMOVE-hello-gxjs_.js -link -l hello-gxjs-rt static/hello.scm
+_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-hello-gxjs_.js)"
+
+echo $_mod_init
+#+end_src
+
+
+Time to create a ~-link~ that includes all that ~_gambit.js~ seems to need. We replace the module_registry_init line.
+
+#+begin_src shell
+gsc -target js -o hello_.js -link static/hello.scm
+sed -i "s/^g_module_registry_init(.*/$_mod_init/" hello_.js
+#+end_src
+
+And compile the other modules.
+
+#+begin_src shell
+ gsc -target js -o hello.js static/hello.scm
+ gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+#+end_src
+
+Now the fun part. Earlier we saw that compilation can simply ~cat~ ~js~ files together.
+
+
+   : cat static/gambit-hello-world_.o static/gambit-hello-world.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" > "gambit-hello-world.js"
+   : cat static/hello_.o static/hello.o "hello-gxjs-rt.js" > "hello-gxjs.js"
+
+Doing the same, what happens?
+
+#+begin_src shell
+cat hello_.js hello.js hello-gxjs-rt.js > hello-gxjs.js
+#+end_src
+
+For the lazy we'll do ~_gambit.js~ first as the loading and initialization is taken care of by us.
+
+#+begin_src shell
+cat $(gsc -e '(display (path-expand "~~lib/_gambit.js"))') lazy-gambit-repl.js > gambit-repl.js
+#+end_src
+
+It doesn't work.
+
+   : g_glo.##current-readtable is not a function
+
+That seems to be that although that is in ~_gambit.js~ it's not loaded. Reversing the order as an exe does also fails.
+
+Hrm.
+
+** Third Attempt: re-init registry
+
+
+Compilation of an exe that contains all we want is a good start. Rather than our
+runtime we'll simply emulate the only thing ~hello.ss~ uses in a ~gxsj-alert.ss~ file.
+
+
+#+begin_src scheme :tangle ~/me/ecm/src/gx-quasar/gx/gxjs-alert.ss
+namespace: gxjs
+(declare (extended-bindings))
+
+(def (alert thing) (##inline-host-statement "var foo = (@1@);
+  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
+  alert(bar);" thing))
+(def (console.log obj) (##inline-host-statement "console.log((@1@))" obj))
+#+end_src
+
+Ok, same as last time, ~gxc~ everything.
+
+#+begin_src shell
+ gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static gxjs-alert.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-hello-world-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+#+end_src
+
+
+#+begin_src shell
+gsc -verbose -keep-temp -target js -exe -o gambit-nonlazy-hello.js static/gxjs-alert.scm static/hello.scm static/gambit-hello-world-module-test.scm static/lazy-gambit-repl.scm
+cp gambit-nonlazy-hello.js ../public/
+#+end_src
+
+   : => cat static/lazy-gambit-repl_.o static/gxjs-alert.o static/hello.o static/gambit-hello-world-module-test.o static/lazy-gambit-repl.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" "gambit-nonlazy-hello.js"
+
+
+And try in in ~Index.vue~.
+
+  : import { Hello, Test } from 'app/public/gambit-nonlazy-hello.js'
+  : // This also imports all of _gambit.js
+
+A quick look says the link file is identical save for the registry init. That's a good thing. Oh, and it works.
+
+#+begin_src shell
+_nonlazy_link='static/lazy-gambit-repl_.o'
+_nonlazy_mod_init="$(grep -rE '^g_module_registry_init\(' $_nonlazy_link)"
+#+end_src
+
+So like last time we'll build one that was the init we want
+
+#+begin_src shell
+gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o REMOVE-hello-gxjs_.js -link -l hello-gxjs-rt static/hello.scm
+
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-hello-gxjs_.js)"
+
+echo $_hello_mod_init
+#+end_src
+
+#+begin_src shell
+gsc -target js -o hello_.js -link static/hello.scm
+sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" hello_.js
+gsc -target js -o hello.js static/hello.scm
+cat hello_.js hello.js hello-gxjs-rt.js > hello-gxjs.js
+cp hello-gxjs.js ../public
+#+end_src
+
+The entire reason behind this is after loading and initializing the module
+registry it to reset the module registry and init it again.
+
+So, to reset it we'll try this:
+#+begin_src shell
+_mod_reset="$(grep '^g_module_.* = [^f]' hello_.js)"
+
+
+echo  "$_mod_reset" > g-module-reset.js
+
+# g_module_count = 0;
+# g_module_map = {};
+# g_module_table = null;
+# g_module_latest_registered = null;
+
+#+end_src
+
+#+begin_src javascript :tangle ../../gx/g-module-reset.js
+g_module_count = 0;
+g_module_map = {};
+g_module_table = null;
+g_module_latest_registered = null;
+#+end_src
+
+Now for a re-init. First, what does the link want?
+
+#+begin_src shell
+gsc -target js -link -o gambit-repl_.js static/lazy-gambit-repl.scm
+_lazy_mod_init="$(grep -rE '^g_module_registry_init\(' gambit-repl_.js)"
+echo $_lazy_mod_init > lazy-mod-init.js
+echo "delete g_glo['##program-descr']" >> lazy-mod-init.js
+#+end_src
+
+Compile the other modules
+
+
+#+begin_src shell
+ gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+#+end_src
+#+begin_src shell
+cat g-module-reset.js lazy-mod-init.js lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js
+cp gambit-repl.js gambit-module-test.js ../public
+#+end_src
+
+It works!!
+
+We can now lazy-load anything it seems.
+
+** A new ~Index.vue~
+
+
+#+begin_src vue :tangle ../../src/pages/Index.vue
+<template>
+  <q-page class="flex flex-center">
+    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+    <br>
+    <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+    534
+   </div>
+    <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+  </q-page>
+</template>
+
+<script>
+
+// import { Hello, Test } from 'app/public/gambit-nonlazy-hello.js'
+
+import { Hello } from 'app/public/hello-gxjs.js'
+import { Test } from 'app/public/gambit-module-test.js'
+
+// var Test = Hello
+
+import 'app/public/gambit-repl.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=> ' + val)
+    }
+  }
+}
+</script>
+#+end_src
+
+* Footnotes
+
+[fn:1] TODO: Find a link to the cvs of mozilla/netscape that has the CL program!
