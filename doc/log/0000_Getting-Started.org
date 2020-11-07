@@ -4,8 +4,9 @@ I've been a *[back|middle|front]*-end web developer for pretty much my entire
 career. For the last 16 years or so ([2020-10-30 Fri] is today) I've used Lisp.
 
 Javascript was actually developed based on scheme and prototyped in Common
-Lisp[fn:1]. I program in Gerbil Scheme[fn:2] whenever possible and the idea of
-using it for browser development certainly piqued my interest.
+Lisp[fn:1]. I program in Gerbil Scheme[fn:2], a meta-dialect of Scheme with
+post-modern features, whenever possible. The idea of using it for browser
+development certainly piqued my interest.
 
 This is an outline of the first attempt.
 
@@ -342,8 +343,8 @@ cp hello-gxjs.js gambit-module-test.js ../public
 #+begin_src vue :tangle ../../src/pages/hello-gxjs-Index.vue
 <template>
   <q-page class="flex flex-center">
-    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
-    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+    <q-btn color="red" @click="Hello('World! Tangle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('World! Tangle!')"> Test function</q-btn>
   </q-page>
 </template>
 
@@ -737,7 +738,7 @@ g_module_register = function (module_descr) {
         // two other things I do not understand.
         g_glo["##program-descr"] = [g_module_table,null,false];
 
-        // This is the arrey of a symbol that names the last module in the
+        // This is the array of a symbol that names the last module in the
         // init.
         temp = g_module_table[g_module_table.length - 1][0];
         g_glo["##vm-main-module-ref"] = temp[temp.length - 1];
@@ -748,7 +749,7 @@ g_module_register = function (module_descr) {
         g_r0 = g_underflow;
         g_nargs = 0;
 
-        // This runs the init procedure of the first registry_init we specifed.
+        // This runs the init procedure of the first registry_init we specified.
 
         g_trampoline(g_module_table[0][4]);
       }
@@ -951,6 +952,7 @@ We can now lazy-load anything it seems.
 
 ** A new ~Index.vue~
 
+This is what we end up with.
 
 #+begin_src vue :tangle ../../src/pages/Index.vue
 <template>
@@ -998,7 +1000,44 @@ export default {
 }
 </script>
 #+end_src
+* Build and deploy the app
+
+First we build!
+
+#+begin_src shell
+LD=$CC quasar build
+#+end_src
+
+Now make sure that if/when I fsck things up there's a backup.
+
+#+begin_src shell
+cd ../; rsync -av gx-quasar/ gx-quasar-bak;  cd -
+#+end_src
+
+Now create a branch as an orphan.
+
+#+begin_src shell
+git checkout --orphan gh-pages
+git rm -rf .
+# rm 'LICENSE'
+# rm 'doc/log/0000_Getting-Started.org'
+rsync -av dist/spa/ .
+git add css/ fonts/ js/ index.html
+git commit -m "First attempt at gh-pages"
+git push origin gh-pages
+#+end_src
+
+A quick look says it's working quite well!
+
+That will end this logfile as we're up and running. Next up will be to make it
+useful.
 
 * Footnotes
+
+[fn:4] http://gambitscheme.org/
+
+[fn:3] https://nixos.org/
+
+[fn:2] https://cons.io/
 
 [fn:1] TODO: Find a link to the cvs of mozilla/netscape that has the CL program!
