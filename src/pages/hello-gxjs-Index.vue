@@ -1,7 +1,7 @@
 <template>
   <q-page class="flex flex-center">
-    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
-    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+    <q-btn color="red" @click="Hello('World! Tangle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('World! Tangle!')"> Test function</q-btn>
   </q-page>
 </template>
 

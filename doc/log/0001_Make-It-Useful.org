@@ -1,0 +1,520 @@
+#+TITLE: Make It Useful: Lazy, Links and Publish
+
+[2020-11-07 Sat]
+
+* Bug/Feature #1: It works, but why?
+
+This is very odd, but it seems the compiler cannot handle a global variable that is not known?
+
+As "luck" would have it, because I literate program, the ~Index.vue~ was tangled twice. The first script and template tags are in fact ignored by the vuejs it seems, yet the compiler seems to take the first script tag into account when linting and/or link checking.
+
+In other words, it seems that the last method fails to compile.
+
+#+begin_src javascript
+    sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=> ' + val)
+    }
+#+end_src
+
+That errors with ~40:17 error 'g_sourceCodeRun' is not defined no-undef~.
+
+But, if I add an empty script tag before the one that actually runs in the
+~Index.vue~, it compiles and runs.
+
+#+begin_src vue
+
+<script> </script>
+<script>
+  // [...]
+   sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=> ' + val)
+    }
+  // [...]
+</script>
+#+end_src
+
+Now, I like lint. Just ask my navel. So, perhaps I should import/export it.
+
+#+begin_src scheme :tangle ../../gx/lazy-gambit-repl.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.evalElement = (arg) => {
+  alert('Lazy? Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (g-sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "
+g_sourceCodeRun = g_scm2host(@1@);
+exports.sourceCodeRun = g_sourceCodeRun;" g-sourceCodeRun)
+
+#+end_src
+
+
+Now, with the import, everything should work as expected. We also needed to change the exported name to camelCase. Lint!
+
+  : import { sourceCodeRun } from 'app/public/gambit-repl.js'
+
+
+
+
+
+* Links
+
+In the ~MainLayout.vue~ there is a series of link on the menu.
+
+#+begin_src javascript
+const linksData = [
+  {
+    title: 'Docs',
+    caption: 'quasar.dev',
+    icon: 'school',
+    link: 'https://quasar.dev'
+  },
+  {
+    title: 'Github',
+    caption: 'github.com/quasarframework',
+    icon: 'code',
+    link: 'https://github.com/quasarframework'
+  },
+  // [...]
+  {
+    title: 'Quasar Awesome',
+    caption: 'Community Quasar projects',
+    icon: 'favorite',
+    link: 'https://awesome.quasar.dev'
+  }
+]
+#+end_src
+
+I'm going to make that into a ~plist~ and then have ~plist->jso~ function that
+does what we want.
+
+This took a lot longer than expected as ~Gerbil + Gambit + our runtime = ???~
+and we were questioning for sure. A few re-writes are needed.
+
+
+Making a host object seems easy. Because in ~js~ almost everything is an
+~object~, *Gambit* allows us to, at least at certain times(!), set a vector
+using a keyword as the index which creates a ~js~ object with those fields.
+
+We'll do so and copy it to make it an object that is not an array.
+
+#+begin_src scheme :noweb-ref plist->jso
+(def (plist->jso plist)
+  (def jso (##make-vector 0))
+  (def (p->o p)
+    (if (null? p) jso
+        (begin ; (console.log p)
+               (set! jso (##vector-set!
+                          jso (car p)
+                          (##inline-host-expression "g_scm2host(@1@);" (cadr p))))
+               (p->o (cddr p)))))
+  (##inline-host-expression "Object.fromEntries(Object.entries(@1@));" (p->o plist)))
+#+end_src
+
+What if we actually want a ~##vector~ but have a list?
+
+It seems that ~length~ and/or ~##length~ does not exist in our runtime. We'll
+certainly need it at some point, so we'll define our own.
+
+#+begin_src scheme :noweb-ref length
+(def (length lst)
+  (if (null? lst) 0 (+ 1 (length (##cdr lst)))))
+#+end_src
+
+Same for ~##list->vector~ and friend. The ~##~ prefix is notable.
+
+#+begin_src scheme :noweb-ref list->vector
+(def (list->vector lst)
+  (def n (##length lst))
+  (def vec (##make-vector n))
+
+  (let loop ((i 0) (l lst))
+    (if (not (null? l))
+      (begin
+        (##vector-set! vec i (##car l))
+        (loop (+ i 1) (##cdr l)))))
+  vec)
+#+end_src
+
+Because we are defining them, using ~def~, a *Gerbil* form, and without the ~##~
+prefix, we need to specify the ~namespace:~. *Gerbil* and *Gambit* use the ~#~
+sign as the separator.
+
+For example, in ~static/lazy-gambit-repl.scm~, which is a generated/transpiled scheme file
+from our version, the symbols defined all have a prefix.
+
+#+begin_src scheme
+(define lazy-gambit-repl#g-sourceCodeRun
+    (lambda (_id389_)
+      (let* ((_elem391_ (lazy-gambit-repl#document.getElementById _id389_))
+             (_code393_ (lazy-gambit-repl#Element.innerText-ref _elem391_)))
+  [...])
+#+end_src
+
+*Gerbil* has a ~namespace:~ keyword that, when placed at the toplevel,
+interprets definitions, along with usage of those defined symbols, in that
+namespace.
+
+It seems that *Gambit* has ~##~ as the prefix for primatives. We can use that to
+cheat our way.
+
+#+begin_src scheme
+namespace: "#"
+#+end_src
+
+Using that keyword at the top makes the namespace ~#~ and the separator ~#~. So
+our symbols are ~##~ prefixed like the gambit primatives.
+
+Now a simply dynamic module that gives us an exported object.
+
+#+begin_src scheme :tangle ../../gx/hello.ss
+(declare (extended-bindings))
+(extern namespace: "#" plist->jso list->vector)
+(extern namespace: "#" alert)
+(def linksData
+  '((title: "Gerbil Docs" caption: "cons.io" icon: "school" link: "https://cons.io")
+    (title: "Quasar Docs" caption: "quasar.dev" icon: "school" link: "https://quasar.dev")))
+
+
+(##inline-host-statement
+ " exports.links = (@1@);"
+ (list->vector (map plist->jso linksData)))
+
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Hello ' + arg)
+}"
+ (lambda (str) (alert str)))
+#+end_src
+
+#+begin_src scheme :tangle ../../gx/gxjs-rt.ss :noweb yes
+namespace: "#"
+(declare (extended-bindings))
+(declare (not inline))
+
+(def (alert thing) (##inline-host-statement "var foo = (@1@);
+  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
+  alert(bar);" thing))
+(def (console.log obj) (##inline-host-statement "console.log((@1@))" obj))
+
+;; (define (apply proc arg1 . rest)
+;;   (if (##pair? rest)
+
+;;       (let loop ((prev arg1) (lst rest))
+;;         (let ((temp (##car lst)))
+;;           (##set-car! lst prev)
+;;           (let ((tail (##cdr lst)))
+;;             (if (##pair? tail)
+;;                 (loop temp tail)
+;;                 (begin
+;;                   (##set-cdr! lst temp)
+;;                   (##apply proc rest))))))
+
+;;       (##apply proc arg1)))
+
+<<plist->jso>>
+
+<<length>>
+
+<<list->vector>>
+
+(def (gambit-module-name mod)
+  (def obj (##vector-ref (##vector-ref mod 0) 0))
+  (##inline-host-expression "(@1@).name" obj))
+
+(def (init-gambit-module mod)
+  (let ((init (##vector-ref mod 4)))
+    (if (not (##procedure? init)) (error "No init for " mod)
+      (init))))
+
+(define (init-gambit-program)
+  (declare (extended-bindings) (not safe))
+    (let ((mods (##vector-ref ##program-descr 0)))
+      (let loop ((i 1)) ;; start at module after the current one
+        (if (##fx< i (##vector-length mods))
+            (let ((mod (##vector-ref mods i)))
+              (init-gambit-module mod) ;; call module's init procedure
+              (loop (##fx+ i 1)))))))
+
+(init-gambit-program)
+
+(##inline-host-declaration "
+gx_old_module_register = g_module_register;
+
+gx_gambit_module_table = [];
+
+gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }
+
+gx_gambit_module_register = function (module_descr) {
+  gx_gambit_module_table.push(module_descr);
+  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)
+    : gx_old_module_register(module_descr)
+}
+
+g_module_register = gx_gambit_module_register;
+
+// console.log(g_module_register);
+")
+
+(##inline-host-statement "gx_gambit_module_init = (g_scm2host(@1@)); " (lambda (mod) (init-gambit-module mod)))
+#+end_src
+
+** ~gambit-module-test.ss~: A module not loaded in the gambit program
+
+#+begin_src scheme :tangle ../../gx/gambit-module-test.ss
+(declare (extended-bindings))
+(extern namespace: "#" alert console.log plist->jso)
+
+(##inline-host-statement
+ "exports.Test = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Test' + arg)
+}"
+ (lambda (str)
+   (let* ((mod (##inline-host-expression "gx_gambit_module_table[1];"))
+          (name (##gambit-module-name mod)))
+     (console.log mod)
+
+     (alert str) (alert name))))
+#+end_src
+
+**  The new ~Index.vue~
+
+This is what we end up with for the index page. Because we lazy-load gambit we want to inform the user of such. The [[https://quasar.dev/quasar-plugins/loading#Loading-API][Loading Plugin]] for *Quasar* is good enough.
+
+#+begin_src javascript
+// quasar.conf.js
+
+return {
+  framework: {
+    plugins: [
+      'Loading'
+    ],
+    config: {
+      loading: {
+        delay: 300,
+        message: 'Loading API...'
+      }
+    }
+  }
+}
+#+end_src
+
+#+begin_src vue :tangle ../../src/pages/Index.vue
+<template>
+  <q-page class="flex flex-center">
+    <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+    <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+    <br>
+    <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+    534
+   </div>
+    <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+  </q-page>
+</template>
+
+<script>
+import { Hello } from 'app/public/gxjs.js'
+import { Test } from 'app/public/gambit-module-test.js'
+import { Loading } from 'quasar'
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var scRun = false;
+      (async () => {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=> ' + val)
+      })()
+    }
+  }
+}
+</script>
+#+end_src
+
+** ~MainLayout.vue~: Our links please!
+
+Changing the layout to be more in line with gerbil.
+
+We'll make a ~js~ file that exports our version.
+
+#+begin_src shell :noweb-ref gxsv
+_gx_sv=../public/gerbil-system-version.js
+echo "Making a $_gx_sv file"
+gxi -e '(import :std/format)' -e '(display (format "export default \"~a\"" (gerbil-system-version-string)))' |tee $_gx_sv
+#+end_src
+
+#+begin_src vue :tangle ../../src/layouts/MainLayout.vue
+<template>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <q-toolbar>
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          @click="leftDrawerOpen = !leftDrawerOpen"
+        />
+
+        <q-toolbar-title>
+          gxQuasar: Gerbil and Quasar
+        </q-toolbar-title>
+
+        <div class="text-subtitle2">{{ gxVersion }} on Quasar v{{ $q.version }}</div>
+      </q-toolbar>
+    </q-header>
+
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      content-class="bg-grey-1"
+    >
+      <q-list>
+        <q-item-label
+          header
+          class="text-grey-8"
+        >
+          Essential Links
+        </q-item-label>
+        <EssentialLink
+          v-for="link in essentialLinks"
+          :key="link.title"
+          v-bind="link"
+        />
+      </q-list>
+    </q-drawer>
+
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
+</template>
+
+<script>
+import EssentialLink from 'components/EssentialLink.vue'
+import { links } from 'app/public/gxjs.js'
+import gxVersion from 'app/public/gerbil-system-version.js'
+const linksData = links
+
+export default {
+  name: 'MainLayout',
+  components: { EssentialLink },
+  data () {
+    return {
+      leftDrawerOpen: false,
+      essentialLinks: linksData,
+      gxVersion: gxVersion
+    }
+  }
+}
+</script>
+#+end_src
+
+
+* ~build.sh~: A simple build script
+
+Most of this is based off [[file:0000_Getting-Started.org::*Third Attempt: re-init registry][Third Attempt: re-init registry]] in the last log.
+
+#+begin_src shell :noweb yes :tangle ../../build.sh :shebang #!/usr/bin/env bash
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+
+_gxc () {
+ gxc -v -d . -S -static $1 || exit 1
+}
+
+echo dir: $_dir;
+_cd="cd $_dir/gx"; echo $_cd ; $_cd;
+
+_gxc gxjs-rt.ss
+_gxc hello.ss
+_gxc lazy-gambit-repl.ss
+_gxc gambit-module-test.ss
+
+# Compile the base -l library
+gsc  -target js -c -o gxjs-rt.js static/gxjs-rt.scm || exit 1;
+
+# Make a link file from our hello to this runtime
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-rt static/hello.scm
+
+# Steal the registry init
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+
+echo Init for registry: $_hello_mod_init
+
+# Compile a link file from our hello to the _gambit.js runtime.
+gsc -target js -o hello_.js -link static/hello.scm
+
+# replace the module init with the other one for our runtime.
+
+sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" hello_.js
+
+# Compile our hello
+
+gsc -target js -o hello.js static/hello.scm
+
+# Make our actual runtime + hello into a proper js file
+
+_gxjs_rt='cat hello_.js hello.js gxjs-rt.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+
+gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+
+_lazy="cat g-module-reset.js lazy-mod-init.js lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
+
+echo Building the gambit repl: \"$_lazy\"; bash -c "$_lazy";
+
+echo "Now the gambit-module-test"
+gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+
+
+_cp='cp gxjs.js gambit-repl.js gambit-module-test.js ../public'; echo Copying finished JS: \"$_cp\"; $_cp;
+
+<<gxsv>>
+
+#+end_src
+
+
+* Commit, build, commit, deploy
+
+
+#+RESULTS:

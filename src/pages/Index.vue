@@ -1,23 +1,5 @@
 <template>
   <q-page class="flex flex-center">
-    <q-btn color="red" @click="Hello('World!')"> Hello World</q-btn>
-  </q-page>
-</template>
-
-<script>
-import { Hello } from 'app/public/hello-world.js'
-export default {
-  name: 'PageIndex',
-  methods: {
-    Hello (arg) {
-      Hello(arg)
-    }
-  }
-}
-</script>
-
-<template>
-  <q-page class="flex flex-center">
     <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
     <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
     <br>
@@ -29,18 +11,9 @@ export default {
 </template>
 
 <script>
-
-// import { Hello, Test } from 'app/public/gambit-nonlazy-hello.js'
-
-import { Hello } from 'app/public/hello-gxjs.js'
+import { Hello } from 'app/public/gxjs.js'
 import { Test } from 'app/public/gambit-module-test.js'
-
-// var Test = Hello
-
-import 'app/public/gambit-repl.js'
-
-window.Hello = Hello
-window.Test = Test
+import { Loading } from 'quasar'
 
 export default {
   name: 'PageIndex',
@@ -54,8 +27,17 @@ export default {
       if (typeof Test === 'function') { Test('Test: ' + arg) }
     },
     sourceCodeRun (id) {
-      var val = g_sourceCodeRun(id)
-      alert('=> ' + val)
+      var scRun = false;
+      (async () => {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=> ' + val)
+      })()
     }
   }
 }

@@ -1,5 +1,5 @@
 (declare (extended-bindings))
-(extern namespace: gxjs alert console.log)
+(extern namespace: "#" alert console.log plist->jso)
 
 (##inline-host-statement
  "exports.Test = (arg) => {
@@ -8,7 +8,7 @@
 }"
  (lambda (str)
    (let* ((mod (##inline-host-expression "gx_gambit_module_table[1];"))
-          (name (gxjs#gambit-module-name mod)))
+          (name (##gambit-module-name mod)))
      (console.log mod)
 
      (alert str) (alert name))))
