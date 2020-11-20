@@ -516,5 +516,21 @@ _cp='cp gxjs.js gambit-repl.js gambit-module-test.js ../public'; echo Copying fi
 
 * Commit, build, commit, deploy
 
+#+begin_src shell
+LD=$CC quasar build
+#+end_src
+
+#+begin_src shell
+git stash
+git checkout gh-pages
+git rm -rf .
+rsync -av dist/spa/ .
+git add css/ fonts/ js/ index.html
+git commit -m "Update gh-pages"
+git push origin gh-pages
+git checkout main
+git stash pop
+#+end_src
+
 
 #+RESULTS:

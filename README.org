@@ -1,0 +1,41 @@
+#+TITLE: Gerbil eXtended Quasar (gx-quasar)
+
+Gerbil eXtended Quasar! A combination of [[https://cons.io][Gerbil Scheme]] with [[https://quasar.dev][Quasar]].
+
+Javascript was actually developed based on scheme and prototyped in Common Lisp.
+I love Lisp and have tried many browser implementations to try alongside my
+server use. This is the first time it is working really well!
+
+The most recent "production" build is right here: https://drewc.github.io/gx-quasar/
+
+* Installing
+
+We need yarn.
+   : yarn --version => 1.22.5
+
+Now clone the repo.
+
+#+begin_src shell
+git clone git@github.com:drewc/gx-quasar.git
+#+end_src
+
+Install and build all the dependencies.
+#+begin_src shell
+cd gx-quasar; yarn
+#+end_src
+
+Start the app in development mode (hot-code reloading, error reporting, etc.)
+
+#+begin_src shell
+quasar dev
+#+end_src
+
+* Build the app for production
+
+The recent production build for an SPAis in the ~gh-pages~ branch.
+
+To build it yourself, build it... yourself!
+
+#+begin_src shell
+quasar build
+#+end_src
