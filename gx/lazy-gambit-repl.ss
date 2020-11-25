@@ -3,7 +3,7 @@
 
 (##inline-host-statement
  "exports.evalElement = (arg) => {
-  alert('Lazy? Hello ' + arg)
+  alert('Lazy? This is working without the reset Hello ' + arg)
 }"
 )
 

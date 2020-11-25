@@ -1,13 +1,14 @@
-(declare (extended-bindings))
-(extern namespace: "#" plist->jso list->vector)
-(extern namespace: "#" alert)
+(extern namespace: "#" list->vector)
+(extern namespace: js plist->jso alert)
 (def linksData
   '((title: "Gerbil Docs" caption: "cons.io" icon: "school" link: "https://cons.io")
     (title: "Quasar Docs" caption: "quasar.dev" icon: "school" link: "https://quasar.dev")))
 
 
 (##inline-host-statement
- " exports.links = (@1@);"
+ " exports.links = (@1@);
+console.log('this is linksdata:', (@1@));
+"
  (list->vector (map plist->jso linksData)))
 
 

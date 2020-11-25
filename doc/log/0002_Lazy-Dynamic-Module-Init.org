@@ -1,0 +1,1323 @@
+#+TITLE: Lazy Load, Dynamic modules, initialized
+
+So far there is just a start at the API and FFI in the RT. Here's a lot more.
+
+* Gerbil time
+
+*Quasar* uses *Vue.js* components[fn:vc] and I've really come to like that
+approach.
+
+Creating a ~component~ in *Gerbil* is the first step.
+
+** Base Example to Gerbil!
+
+The first example looks like this.
+
+#+begin_src javascript
+// Define a new component called button-counter
+Vue.component('button-counter', {
+  data: function () {
+    return {
+      count: 0
+    }
+  },
+  template: '<button v-on:click="count++">You clicked me {{ count }} times.</button>'
+})
+#+end_src
+
+I want to make it sexp.
+
+#+begin_src scheme
+(vue#component
+ name: "button-counter"
+ data: [count: 0]
+ template: '|<button v-on:click="count++">You clicked me {{ count }} times.</button>|)
+#+end_src
+
+We'll make a standalone component and import it to *Quasar*
+
+#+begin_src javascript :tangle ../../public/test-js-component.js
+export default {
+  name: 'ButtonCounter',
+  data: function () {
+    return {
+      count: 0
+    }
+  },
+  template: '<button v-on:click="count++">JS:You clicked me {{ count }} times.</button>'
+}
+
+#+end_src
+
+We'll make the template form ~<js-button-counter></js-button-counter>~. *Vue.js*
+has "Local Registration"[fn:vlr]. The ~name:~ matters not and we're not using
+~Vue.component(<name>, ...)~ but rather "ES2015 modules, such as through [...]
+Webpack"
+
+So, import the default with a very specific name.
+
+#+begin_src javascript :noweb-ref js-import-test
+import jsButtonCounter from 'app/public/test-js-component.js'
+#+end_src
+
+Now in the component itself there's a field to import. And "For each property in
+the components object, the key will be the name of the custom element, while the
+value will contain the options object for the component."[fn:vlr]
+
+#+begin_src javascript
+  components: { jsButtonCounter },
+#+end_src
+
+Wait, no key? "in ES2015+, placing a variable name like ComponentA inside an object is shorthand for ComponentA: ComponentA"[fn:vlr].
+
+Ok, but I want ~<js-button-counter>~ in kebab-case, do I need a key?
+
+"When defining a component with PascalCase, you can use either case when
+referencing its custom element. That means both ~<my-component-name>~ and
+~<MyComponentName>~ are acceptable."[fn:vunc]
+
+Yay! Adding the tag to our index and it ... fails to build.
+#+begin_src html :noweb-ref js-button-counter
+<js-button-counter></js-button-counter>
+#+end_src
+
+I had to add the compiler to the ~build:~ property in ~quasar.conf.js~. This is
+to get rid of the error:
+
+: [Vue warn]: You are using the runtime-only build of Vue where the template compiler is not available.
+: Either pre-compile the templates into render functions, or use the compiler-included build.
+
+#+begin_src javascript
+  vueCompiler: true,
+#+end_src
+
+It now works in the index! Time to try and gerbilize it.
+
+*** ~namespace: vue~ and ~vue.js~: Our first gerbil component
+:PROPERTIES:
+:CUSTOM_ID: FirstVueGx
+:END:
+
+#+begin_src scheme :tangle ../../gx/vue.ss
+namespace: vue
+
+(def (component . plist)
+  (def rlist [])
+  (let loop ((pl plist))
+    (if (not (null? pl))
+      (let ((key (car pl))
+            (val (cadr pl))
+            (rst (cddr pl)))
+        (cond ((eq? data: key)
+               (set! val (let ((v (js#js->foreign (js#plist->jso val))))
+                            v)))
+              ((and (eq? template: key) (##symbol? val))
+               (set! val (##symbol->string val))))
+        (set! rlist (cons key (cons val rlist)))
+        (loop rst))))
+  (let ((jso (js#plist->jso rlist)))
+    (##inline-host-expression "comp = (@1@); const data = comp.data;
+         comp.data = function () { return data } ; comp;" jso)))
+
+(##inline-host-statement
+ "exports.ButtonCounter = (@1@);"
+ (component
+  name: "button-counter"
+  data: [ count: 0 ]
+  template: '|<button v-on:click="count++"> Gerbil!! You clicked me {{ count }} times.</button>|))
+#+end_src
+
+Adding that compiled JS to our runtime and adding the component to our Index works wonders.
+
+#+begin_src html
+   <button-counter></button-counter>
+#+end_src
+#+begin_src javascript
+import { Hello, ButtonCounter } from 'app/public/gxjs.js'
+// [...]
+export default {
+ // [...]
+  components: { ButtonCounter, jsButtonCounter },
+ // [...]
+ }
+#+end_src
+
+The issue is that it needs to be added to the main file, as does a lot right
+now. This has almost everything to do with how *Gambit* initializes the file
+according to its module system.
+
+We'll "fix" that for our nefarious purposes.
+
+* Lazy/Dynamic "modules"
+
+I want to have a component JS that is just the component.
+
+#+begin_src scheme :tangle ../../gx/button-counter1.ss
+(##inline-host-declaration "console.log('declare lzy button');")
+(##inline-host-statement
+ "exports.lazyButtonCounter = (@1@);
+   alert('lazy button!!');"
+(vue#component
+  name: "button-counter"
+  data: [ count: 0 ]
+  template: '|<button v-on:click="count++"> LAZYYY!!!! You clicked me {{ count }} times.</button>|))
+#+end_src
+
+Here's the thing. The ~##inline-host-declaration~ becomes a toplevel statement
+in the file, so it is run at load time.
+
+But, because both ~##inline-host-statement~ and ~##inline-host-expression~
+require scheme-y things that may not exist at load time, they are placed in a
+function, a scheme function, that is run when that "gambit module" is
+initialized.
+
+Compile it and make it a part of the ~Index.vue~. It fails.
+
+#+begin_src shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ; echo;
+}
+_gxc button-counter.ss
+gsc -target js -o button-counter.js static/button-counter.scm
+
+cp button-counter.js ../public/
+#+end_src
+
+#+begin_src html
+   <lazy-button-counter></lazy-button-counter>
+#+end_src
+#+begin_src javascript
+import { lazyButtonCounter } from 'app/public/button-counter.js'
+  components: { ButtonCounter, jsButtonCounter, lazyButtonCounter },
+#+end_src
+
+If you notice, we put an alert in that runs when it is initialized. It currently
+does not run. That means our attempt at initiailzing things outside of gambit's
+~g_module_register~ does not actually work.
+
+If we actually reset the registry, like we did for the gambit repl, it does
+work!
+
+#+begin_src shell
+_scm_file=static/button-counter.scm;
+_fn=$(basename $_scm_file .scm);
+_lnk='REMOVE_'$_fn'_.js'
+_base='_base_'$_fn'_.js'
+_js=$_fn.js
+
+echo This link file has the right g_module_registry_init
+gsc -target js -o $_lnk -link -l gxjs-rt $_scm_file || exit 3
+_mod_init="$(grep -rE '^g_module_registry_init\(' $_lnk)"
+echo $_mod_init
+
+echo  We need to re-register the gxjs-rt
+_gxjs_mod_reg="$(grep -rE '^g_module_register\(' gxjs-rt.js)"
+echo $_gxjs_mod_reg
+
+echo "moving the inital js"
+_mv="mv $_js $_base"; echo $_mv ; $_mv
+
+echo "Resetting module registry"
+echo "g_module_count = 0; g_module_map = {}; g_module_table = null; g_module_latest_registered = null; " | tee $_js
+
+echo "Deleting the program description"
+echo "delete g_glo['##program-descr']" | tee -a $_js
+
+echo "Adding the new module registry init"
+echo $_mod_init | tee -a $_js
+
+echo "Appending the basic code"
+cat $_base >> $_js;
+
+echo "Registering the run time which will initilize the new code"
+echo $_gxjs_mod_reg | tee -a $_js;
+
+echo "$_js is now completed."
+rm $_base; cp button-counter.js ../public/
+#+end_src
+
+That means that the registration does what we try to do. We'll just steal it.
+
+* ~g_module_register~, it's time we broke up.
+:PROPERTIES:
+:CUSTOM_ID: RegisterJumpOnTrampoline
+:END:
+
+#+begin_src javascript :noweb-ref g_module_register
+
+g_module_name = function (module_descr) {
+  var temp = module_descr[0];
+  var name = temp[temp.length - 1].name;
+  return name;
+};
+
+g_module_init = function(module_descr) {
+  g_sp = -1;
+  g_stack[++g_sp] = void 0;
+  g_r0 = g_underflow;
+  g_nargs = 0;
+  g_trampoline(module_descr[4]);
+};
+
+gx_gambit_module_table = (typeof gx_old_module_register === 'undefined') ? [] : gx_gambit_module_table;
+
+g_module_register = function (module_descr) {
+  // Keep track of all registered modules.
+  gx_gambit_module_table.push(module_descr);
+
+  if ( typeof g_glo['##program-descr'] === 'object' ) {
+    g_module_init(module_descr);
+  } else {
+    var temp = module_descr[0];
+    var name = temp[temp.length - 1].name;
+    var info = Object.prototype.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : null;
+    g_module_latest_registered = module_descr;
+    if (!(info === null || g_module_count === g_module_table.length)) {
+      var index = info.index;
+      var old = g_module_table[index];
+      g_module_table[index] = module_descr;
+      if (old === null) {
+        ++g_module_count;
+        if (g_module_count === g_module_table.length) {
+          g_glo["##program-descr"] = [g_module_table,null,false];
+          temp = g_module_table[g_module_table.length - 1][0];
+          g_glo["##vm-main-module-ref"] = temp[temp.length - 1];
+          g_sp = -1;
+          g_stack[++g_sp] = void 0;
+          g_r0 = g_underflow;
+          g_nargs = 0;
+          g_trampoline(g_module_table[0][4]);
+        }
+      }
+    }
+  }
+};
+
+#+end_src
+
+#+begin_src scheme :tangle ../../gx/button-counter.ss :noweb yes
+(##inline-host-declaration "console.log('declare lazy init!!!! button');")
+(##inline-host-declaration #<<HOSTDECL
+ {%g_module_register%}
+HOSTDECL
+)
+
+(##inline-host-statement
+ "exports.lazyButtonCounter = (@1@);
+   console.log('lazy init!! button!!');"
+(vue#component
+  name: "button-counter"
+  data: [ count: 0 ]
+  template: '|<button v-on:click="count++"> LAZYYY!!!! You clicked me {{ count }} times.</button>|))
+#+end_src
+
+
+That actually works great, so it's time to make our run time that uses that technique.
+
+
+*  ~gxjs-rt.ss~, it's time we broke (you) up as well.
+
+We'll make ~gxjs.js~ from three different files: ~gxjs-init.ss~, ~gxjs-rt.ss~
+and ~gxjs-ffi.ss~. The first will be minimal, basically just the inititalize
+functions. The second will have "all" (aka some) of the forms we need to
+bootstrap *Gerbil* in ~js~ (eventually). The third will have the FFI we need to
+develop *GxQuasar*.
+
+First things first, we want to avoid needing to ~grep~ and replace them in the
+build system. Things need to be KISS'd.
+
+Since we already know how to re-initilize the module registry we'll make it do
+so when initiailzing.
+
+#+begin_src javascript :noweb-ref g_module_registry_reset
+g_module_registry_reset = function () {
+  g_module_count = 0;
+  g_module_map = {};
+  g_module_table = null;
+  g_module_latest_registered = null;
+};
+#+end_src
+
+#+begin_src javascript :noweb-ref g_module_registry_init
+g_module_registry_init = function (link_info) {
+  var n = link_info.length;
+  var i = 0;
+  g_module_registry_reset();
+  g_module_table = new Array(n);
+  while (i < n) {
+    var info = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = null;
+    ++i;
+  }
+};
+#+end_src
+
+** Minimal "Hello" attempt.
+
+
+Now we need to re-init the registry. We know from experience this can come from
+compilation.
+
+Back to a hello that does nothing.
+
+#+begin_src scheme :tangle ../../gx/hello1.ss
+(##inline-host-statement
+ " exports.links = [{title: 'foo', link: 'https://google.ca'}];"
+)
+
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+  alert('Hello ' + arg)
+}")
+#+end_src
+
+Now a ~js~ file that just has that.
+#+begin_src shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ; echo;
+}
+echo "Compile the base -l library gxjs-init.js"
+
+_gxc gxjs-init.ss
+gsc  -target js -c -o gxjs-init.js static/gxjs-init.scm || exit 1;
+
+echo "----------------"; echo; echo;
+
+_gxc hello.ss
+echo Make a link file from our file to this runtime
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init static/hello.scm
+
+echo Steal the registry init
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+
+echo Init for registry: $_hello_mod_init;
+rm REMOVE-gxjs_.js
+
+
+# Compile a link file from our hello to the _gambit.js runtime.
+gsc -target js -o gxjs-link.js -link static/hello.scm
+
+echo Append replace the module init with the other one for our runtime.
+
+sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" gxjs-link.js
+
+gsc -target js -o hello.js static/hello.scm
+
+_gxjs_rt='cat gxjs-link.js gxjs-init.js hello.js  > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+#+end_src
+
+The ~sed~ gives us a simple init
+  : g_module_registry_init([new G_ModLinkInfo("gxjs-init",0),new G_ModLinkInfo("hello",1)]);
+
+
+If we add that form to the declarations in the ~gxjs-init.ss~, we can get rid of the ~sed~! That means our new attempt is working.
+
+** Small RT
+
+[[#gxjsbsrt][~gxjs-rt~]] is fairly small so lets add it to our hello. We'll use ~##length~.
+
+#+begin_src scheme :tangle ../../gx/hello1.ss
+(##inline-host-statement
+ " exports.links = [{title: 'foo', link: 'https://google.ca'}];"
+)
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+  alert('Hello ' + arg + ' ' + (@1@))
+}"
+ (##length '(1 2 3)))
+#+end_src
+
+Build it.
+
+#+begin_src shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ; echo;
+}
+echo "Compile the base -l library gxjs-init.js"
+
+_gxc gxjs-init.ss
+gsc  -target js -c -o gxjs-init.js static/gxjs-init.scm || exit 1;
+
+echo "----------------"; echo; echo;
+
+_gxc hello.ss
+_gxc gxjs-rt.ss
+echo Make a link file from our file to this runtime
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init static/hello.scm static/gxjs-rt.scm
+
+echo Steal the registry init
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+
+echo Init for registry: $_hello_mod_init;
+rm REMOVE-gxjs_.js
+
+# Compile a link file from our hello to the _gambit.js runtime.
+gsc -target js -o gxjs-link.js -link static/hello.scm
+
+echo Append replace the module init with the other one for our runtime.
+
+sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" gxjs-link.js
+
+gsc -target js -o hello.js static/hello.scm
+gsc -target js -o gxjs-rt.js static/gxjs-rt.scm
+
+_gxjs_rt='cat gxjs-link.js gxjs-init.js hello.js gxjs-rt.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+#+end_src
+
+** Small FFI
+
+With just a few namespace changes, back to our original hello.
+
+#+begin_src scheme :tangle ../../gx/hello.ss
+(extern namespace: "#" list->vector)
+(extern namespace: js plist->jso alert)
+(def linksData
+  '((title: "Gerbil Docs" caption: "cons.io" icon: "school" link: "https://cons.io")
+    (title: "Quasar Docs" caption: "quasar.dev" icon: "school" link: "https://quasar.dev")))
+
+
+(##inline-host-statement
+ " exports.links = (@1@);
+console.log('this is linksdata:', (@1@));
+"
+ (list->vector (map plist->jso linksData)))
+
+
+(##inline-host-statement
+ "exports.Hello = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Hello ' + arg)
+}"
+ (lambda (str) (alert str)))
+#+end_src
+
+Now build the [[#gxjsffi][~gxjs-ffi~]] and include it.
+
+#+begin_src shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ; echo;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _statics="$_statics $1"
+
+  echo "compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+
+
+echo "Compile the base -l library gxjs-init.js"
+_comp gxjs-init.ss
+_statics=""
+echo "----------------"; echo; echo;
+_comp hello.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+echo "Make a link file from our file to this runtime"
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init $_statics
+
+echo Steal the registry init
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+
+echo Init for registry: $_hello_mod_init;
+rm REMOVE-gxjs_.js
+
+# Compile a link file from our statics to the _gambit.js runtime.
+gsc -target js -o gxjs-link.js -link $_statics
+
+echo Append replace the module init with the other one for our runtime.
+
+sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" gxjs-link.js
+
+_gxjs_rt='cat gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js hello.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+#+end_src
+
+** Separate Lazy Hello
+
+At this point we have everything we want in one JS, and one thing that we don't
+want, the hello.
+
+#+begin_src shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ; echo;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _statics="$_statics $1"
+
+  echo "compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+
+
+echo "Compile the base -l library gxjs-init.js"
+_comp gxjs-init.ss
+_statics=""
+echo "----------------"; echo; echo;
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+echo "Make a link file from our file to this runtime"
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init $_statics
+
+echo Steal the registry init
+_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+
+echo Init for registry: $_hello_mod_init;
+rm REMOVE-gxjs_.js
+
+# Compile a link file from our statics to the _gambit.js runtime.
+gsc -target js -o gxjs-link.js -link $_statics
+
+echo Append replace the module init with the other one for our runtime.
+
+echo not doing sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" gxjs-link.js
+
+_gxjs_rt='cat gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+
+echo Now a lazy hello
+_comp hello.ss
+
+cp hello.js gxjs.js button-counter.js ../public
+#+end_src
+
+#+RESULTS:
+
+That gives us the ~js~ form we need. Notice we echo "not doing sed"
+
+#+begin_src javascript :noweb-ref gxjs-mod-init-form
+g_module_registry_init([new G_ModLinkInfo("gxjs-init",0),new G_ModLinkInfo("gxjs-rt",1),new G_ModLinkInfo("gxjs-ffi",2)]);
+#+end_src
+
+Now that this form is included in our init we can build our ~gxjs.js~ and try it
+out WITHOUT THE ~sed~!!
+
+Down at the very bottom of our link file is a module registry init.
+
+#+begin_src javascript
+g_module_registry_init([new G_ModLinkInfo("_gambit",0),new G_ModLinkInfo("gxjs-init",1),new G_ModLinkInfo("gxjs-rt",2),new G_ModLinkInfo("gxjs-ffi",3)]);
+#+end_src
+
+In the past we simply ~sed~'d it to our ~js~ form. But now we handle it
+automagically. Just a matter of building the "modules" and con-~cat~-enate the
+~js~ files.
+
+** /File/ ~gxjs-init.ss~
+
+This is really simple. When this is first in line, the rest will follow it. We
+declare our ~g_module_register~ and siblings then our own
+~g_module_registry_init~.
+
+#+begin_src scheme :tangle ../../gx/gxjs-init.ss :noweb yes
+namespace: "#"
+
+(def (init-gambit-module mod)
+  (let ((init (##vector-ref mod 4)))
+    (if (not (##procedure? init)) (##inline-host-statement "alert('Cannot find init function in ' + g_module_name(@1@)); " mod)
+        (init))))
+
+(def (init-gambit-program)
+  (declare (extended-bindings) (not safe))
+   (##inline-host-statement "// alert('init program time!'); console.log(g_glo['##program-descr'][0].map(g_module_name));")
+    (let ((mods (##vector-ref ##program-descr 0)))
+      (let loop ((i 1)) ;; start at module after the current one
+        (if (##fx< i (##vector-length mods))
+            (let ((mod (##vector-ref mods i)))
+              (init-gambit-module mod) ;; call module's init procedure
+              (loop (##fx+ i 1)))))))
+
+(init-gambit-program)
+
+(##inline-host-declaration
+ #<<HOSTDECL
+
+{%g_module_registry_reset%}
+
+{%g_module_registry_init%}
+
+{%g_module_register%}
+
+{%gxjs-mod-init-form%}
+
+HOSTDECL
+)
+#+end_src
+
+
+** ~gxjs-rt~, now a minimal BS (bootstrap, not bovine feces) file.
+:PROPERTIES:
+:CUSTOM_ID: gxjsbsrt
+:END:
+
+These are all in ~namespace: "#"~ which actually means the defined symbols are
+prefixed by ~##~.
+
+*** ~error~
+
+I have no idea what *Gambit* does for/with conditions and ~js~.
+
+#+begin_src scheme :noweb-ref error
+(def (error thing)
+  (if (##string? thing)
+    (set! thing (##inline-host-expression "g_scm2host(@1@)" thing)))
+  (##inline-host-statement "_e = (@1@);
+   if (_e instanceof Error) { throw _e } else { throw new Error(_e) };" thing))
+#+end_src
+
+*** ~length~
+
+#+begin_src scheme :noweb-ref length
+(def (length lst)
+  (if (null? lst) 0 (+ 1 (length (##cdr lst)))))
+#+end_src
+
+#+begin_src scheme :noweb yes
+namespace: "#"
+
+#+end_src
+
+*** ~list->vector~
+
+#+begin_src scheme :noweb-ref list->vector
+(def (list->vector lst)
+  (def n (##length lst))
+  (def vec (##make-vector n))
+
+  (let loop ((i 0) (l lst))
+    (if (not (null? l))
+      (begin
+        (##vector-set! vec i (##car l))
+        (loop (+ i 1) (##cdr l)))))
+  vec)
+#+end_src
+
+*** ~string-append~
+
+I don't (yet) seem to have ~##apply~ at runtime (though may ... commented and
+not tried) so this is somewhat ineffecient and shorthand.
+
+#+begin_src scheme :noweb-ref string-append
+(def (string-append . strs)
+  (def (strapp s1 s2)
+    (let* ((l1 (##string-length s1))
+           (l2 (##string-length s2))
+           (l3 (+ l1 l2))
+           (s3 (##make-string l3)))
+      (let lp ((n 0))
+        (if (< n l1)
+          (##string-set! s3 n (##string-ref s1 n))
+          (if (>= n l1)
+            (##string-set! s3 n (##string-ref s2 (- n l1)))))
+      (if (< n l3) (lp (+ 1 n))))
+                                        ;(##apply string-append s3 rst)
+      s3))
+
+  (def str (car strs))
+
+  (let applp ((lst (cdr strs)))
+    (if (null? lst) str
+        (begin (set! str (strapp str (car lst)))
+               (applp (cdr lst))))))
+#+end_src
+
+
+*** /File/ ~gxjs-rt.ss~
+#+begin_src scheme :tangle ../../gx/gxjs-rt.ss :noweb yes
+namespace: "#"
+(declare (not inline))
+
+;; (define (apply proc arg1 . rest)
+;;   (if (##pair? rest)
+
+;;       (let loop ((prev arg1) (lst rest))
+;;         (let ((temp (##car lst)))
+;;           (##set-car! lst prev)
+;;           (let ((tail (##cdr lst)))
+;;             (if (##pair? tail)
+;;                 (loop temp tail)
+;;                 (begin
+;;                   (##set-cdr! lst temp)
+;;                   (##apply proc rest))))))
+
+;;       (##apply proc arg1)))
+
+{%error%}
+
+{%length%}
+
+{%list->vector%}
+
+{%string-append%}
+
+#+end_src
+
+** ~gxjs-ffi~
+:PROPERTIES:
+:CUSTOM_ID: gxjsffi
+:END:
+
+All of these will be placed in the ~js#~ namespace.
+
+*Gambit* has ~foreign~ types.
+
+#+begin_src scheme :noweb-ref js->foreign
+(def (js->foreign obj)
+  (##inline-host-expression "g_host2foreign(@1@);" obj))
+#+end_src
+
+#+begin_src scheme :noweb-ref foreign->js
+(def (foreign->js obj)
+  (if (not (##foreign? obj))
+    (##error "Not a foreign object"))
+  (##inline-host-expression "g_foreign2host(@1@);" obj))
+
+#+end_src
+This is useful as well. Somewhat cribbed from *gambit-scm-2-js*[fn:gs2js]
+
+#+begin_src scheme :noweb-ref scm->js
+(def (scm->js obj)
+  (begin
+    (##inline-host-statement "var result;")
+    (##inline-host-statement "try {result = g_scm2host(@1@);} catch (e) {result = Error(e);}" obj)
+    (let ((result (##inline-host-expression "result;")))
+      (if (js->scm (##inline-host-expression "@1@ instanceof Error;" result))
+          (##error result)
+          result))))
+
+(def (js->scm obj)
+  (##inline-host-expression "g_host2scm(@1@);" obj))
+#+end_src
+
+#+begin_src scheme :noweb-ref plist->jso
+(def (plist->jso plist)
+  (def jso (##make-vector 0))
+  (def (p->o p)
+    (if (null? p) jso
+        (begin ; (console.log p)
+               (set! jso (##vector-set!
+                          jso (##car p)
+                          (let ((obj (##cadr p)))
+                            (if (##foreign? obj)
+                              (##inline-host-expression "g_foreign2host(@1@);" obj)
+                             ; (if (##procedure? obj) obj
+                              (##inline-host-expression "g_scm2host(@1@);" obj)))))
+               (p->o (##cddr p)))))
+  (##inline-host-expression "Object.fromEntries(Object.entries(@1@));" (p->o plist)))
+#+end_src
+
+
+*** /File/ ~gxjs-ffi.ss~
+#+begin_src scheme :tangle ../../gx/gxjs-ffi.ss :noweb yes
+namespace: js
+
+(def (alert thing) (##inline-host-statement "var foo = (@1@);
+  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
+  alert(bar);" thing))
+(def (console.log obj) (##inline-host-statement "console.log((@1@))" obj))
+(def (console.error obj) (##inline-host-statement "console.error((@1@))" obj))
+
+{%js->foreign%}
+{%foreign->js%}
+
+{%scm->js%}
+
+{%plist->jso%}
+#+end_src
+
+* Putting it all together
+
+Now that we have almost everything lazy/dynamic, we want to get back to our
+original index.
+
+We'll have 3 steps.
+
+ 1) ~gxjs~ :: Our basic run time
+ 2) All the lazy modules
+ 3) The gambit repl (done the old way)
+
+Our ~_comp~ shell function takes a ~.ss~, makes a ~static/.scm~ and compiles that to a ~.js~.
+
+#+begin_src shell :noweb-ref compiler-shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _statics="$_statics $1"
+
+  echo "--- compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+#+end_src
+
+** Build ~gxjs~
+
+#+begin_src shell :noweb-ref build-gxjs
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+echo "Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."
+gsc -target js -o gxjs-link.js -link $_statics
+
+_gxjs_rt='cat gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+
+cp gxjs.js ../public/
+#+end_src
+
+** Build the modules
+
+1) vue
+2) hello
+3) gambit-module-test
+4) button-counter
+
+#+begin_src shell :noweb-ref build-modules
+_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+cp vue.js hello.js gambit-module-test.js button-counter.js ../public
+#+end_src
+
+*** ~gambit-module-test.ss~: A module not loaded in the gambit program
+
+#+begin_src scheme :tangle ../../gx/gambit-module-test.ss
+(##inline-host-statement
+ "exports.Test = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Test' + arg)
+}
+
+console.log('init gambit-module-test');
+
+"
+ (lambda (str)
+   (let* ((mod (##inline-host-expression "g_module_name(gx_gambit_module_table[1]);")))
+     (js#console.log mod)
+     (js#alert str))))
+#+end_src
+
+** Now the full gambit repl
+
+This time we try without the module reset/init.
+
+#+begin_src shell :noweb-ref build-repl
+_comp lazy-gambit-repl.ss
+_lazy="cat lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
+echo Building the gambit repl: \"$_lazy\"; bash -c "$_lazy";
+cp gambit-repl.js ../public
+#+end_src
+
+
+#+begin_src scheme :tangle ../../gx/lazy-gambit-repl.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.evalElement = (arg) => {
+  alert('Lazy? This is working without the reset Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (g-sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "
+g_sourceCodeRun = g_scm2host(@1@);
+exports.sourceCodeRun = g_sourceCodeRun;" g-sourceCodeRun)
+
+#+end_src
+* Boot File
+
+Everything that lazy-loads relies on the ~gxjs.js~ runtime. *Quasar* has a ~/boot~ folder which runs things before it runs things as it were.
+
+https://quasar.dev/quasar-cli/boot-files is a good resource.
+
+#+begin_src javascript :tangle ../../src/boot/gxjs.js
+import 'app/public/gxjs.js'
+export default ({ app, router, store, Vue }) => {
+  // something to do
+}
+#+end_src
+
+This must be added to ~quasar.conf.js~
+
+#+begin_src javascript
+boot: [
+  'axios',
+  'gxjs'
+],
+#+end_src
+
+* ~LogIndex.vue~, a logs component
+
+Eventually this will become a lot of our code as exporting the logs to json and then *Vue*'ing them is a wonderful task to grow code in.
+
+For now :
+
+#+begin_src vue :tangle ../../src/components/LogIndex.vue
+<template>
+      <div class="q-pa-md">
+        Here is the <a href="log/index.html" target="log_iframe"> index </a> of the ongoing saga that is <strong>gxQuasar</strong>
+    <q-layout view="lHh Lpr lFf" container style="height: 60vh" class="shadow-2 rounded-borders">
+      <q-page-container>
+        <q-page padding>
+          <iframe class="resp-iframe"
+                  src="log/index.html"
+                  name="log_iframe"
+                  height="50000"
+                  allowfullscreen> </iframe>
+        </q-page>
+      </q-page-container>
+    </q-layout>
+  </div>
+</template>
+
+<style>
+  .resp-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+</style>
+
+<script>
+export default {
+  name: 'LogIndex'
+}
+</script>
+
+#+end_src
+
+* ~Index.vue~
+
+Going to add the log files as html in order to have something useful to look at
+live.
+
+#+begin_src vue :tangle ../../src/pages/Index.vue :noweb yes
+<template>
+  <q-page>
+    <div>
+      <q-splitter
+        v-model="splitterModel"
+        >
+
+        <template v-slot:before>
+        <q-tabs
+          v-model="tab" no-caps
+          vertical
+          class="text-teal"
+        >
+          <q-tab name="index" icon="loyalty" label="GerbilJS" />
+          <q-tab name="repl" icon="keyboard" label="REPL" />
+          <q-tab name="weblog" icon="format_list_numbered" label="Log Files" />
+          <q-tab name="tests" icon="verified" label="Tests" />
+        </q-tabs>
+      </template>
+
+      <template v-slot:after>
+        <q-tab-panels
+          v-model="tab"
+          animated
+          swipeable
+          vertical
+          transition-prev="jump-up"
+          transition-next="jump-up"
+        >
+          <q-tab-panel name="index">
+            <span class="text-h4">GxQuasar</span>
+            <span class='text-subtitle2'>An overview of Gerbil Scheme in JavaScript</span>
+            <hr>
+            <p> Developing Web Applications takes knowledge of a lot of
+            languages.</p>
+            <p>Centralizing on a lisp dialect, in
+            particular <a href="https://cons.io"><b>Gerbil</b>: a meta-dialect
+            of Scheme</a>, makes things a lot easier. </p>
+
+            <p>To have a look at the code, see the <code>./gx/</code> directory in <a href="https://github.com/drewc/gx-quasar">the github repo. </a> </p>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="repl">
+            <div class="text-h4 q-mb-md">ReadEvalPrint(actually alert, then wait, before)Loop</div>
+
+            This is currently just a <a href="http://gambitscheme.org/">Gambit
+            Scheme</a> REPL. Gambit is the language that Gerbil
+            currently <a href="https://en.wikipedia.org/wiki/Source-to-source_compiler">transpiles</a>
+            to which itself can transpile to JavaScript.
+
+            <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+              (list "123" 456 #(7 8 9))
+            </div>
+
+            <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+            <hr>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="weblog">
+            <div class="text-h4 q-mb-md">Log Files</div>
+            <log-index></log-index>
+          </q-tab-panel>
+
+          <q-tab-panel name="tests">
+            <div class="text-h4 q-mb-md">Tests</div>
+            This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
+            {%js-button-counter%}
+            <button-counter></button-counter>
+            <lazy-button-counter></lazy-button-counter>
+            <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+            <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+          </q-tab-panel>
+        </q-tab-panels>
+      </template>
+
+    </q-splitter>
+  </div>
+  </q-page>
+</template>
+
+<script>
+import { Hello } from 'app/public/hello.js'
+import { ButtonCounter } from 'app/public/vue.js'
+import { lazyButtonCounter } from 'app/public/button-counter.js'
+import { Test } from 'app/public/gambit-module-test.js'
+import { Loading } from 'quasar'
+import LogIndex from 'components/LogIndex.vue'
+
+{%js-import-test%}
+
+export default {
+  name: 'PageIndex',
+  // components: { jsButtonCounter },
+  // components: { lazyButtonCounter, jsButtonCounter },
+  components: { ButtonCounter, jsButtonCounter, lazyButtonCounter, LogIndex },
+  data () {
+    return {
+      tab: 'index',
+      splitterModel: 20
+    }
+  },
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      // console.log(ButtonCounter)
+      // console.log(lazyButtonCounter)
+
+      window.btn = ButtonCounter
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var scRun = false;
+      // return scRun
+      (async () => {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun, evalElement } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          evalElement('yay!!')
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=> ' + val)
+      })()
+    }
+  }
+}
+</script>
+#+end_src
+
+
+* ~MainLayout.vue~: Hello links please!
+
+The links are now in ~hello.js~
+
+#+begin_src vue :tangle ../../src/layouts/MainLayout.vue
+<template>
+  <q-layout view="lHh Lpr lFf">
+    <q-header elevated>
+      <q-toolbar
+          class="bg-teal"
+
+        >
+        <q-btn
+          flat
+          dense
+          round
+          icon="menu"
+          aria-label="Menu"
+          @click="leftDrawerOpen = !leftDrawerOpen"
+        />
+
+        <q-toolbar-title>
+          gxQuasar: Gerbil and Quasar
+        </q-toolbar-title>
+
+        <div class="text-subtitle2">{{ gxVersion }} on Quasar v{{ $q.version }}</div>
+      </q-toolbar>
+    </q-header>
+
+    <q-drawer
+      v-model="leftDrawerOpen"
+      show-if-above
+      bordered
+      content-class="bg-grey-1"
+    >
+      <q-list>
+        <q-item-label
+          header
+          class="text-grey-8"
+        >
+          Essential Links
+        </q-item-label>
+        <EssentialLink
+          v-for="link in essentialLinks"
+          :key="link.title"
+          v-bind="link"
+        />
+      </q-list>
+    </q-drawer>
+
+    <q-page-container>
+      <router-view />
+    </q-page-container>
+  </q-layout>
+</template>
+
+<script>
+import EssentialLink from 'components/EssentialLink.vue'
+import { links } from 'app/public/hello.js'
+import gxVersion from 'app/public/gerbil-system-version.js'
+const linksData = links
+
+export default {
+  name: 'MainLayout',
+  components: { EssentialLink },
+  data () {
+    return {
+      leftDrawerOpen: false,
+      essentialLinks: linksData,
+      gxVersion: gxVersion
+    }
+  }
+}
+</script>
+#+end_src
+
+* ~build.sh~: A simple build script
+
+#+begin_src shell :tangle ../../build.sh  :shebang "#!/usr/bin/env bash" :noweb yes
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+echo dir: $_dir;
+_cd="cd $_dir/gx"; echo $_cd ; $_cd;
+
+{%compiler-shell%}
+
+{%build-gxjs%}
+
+{%build-modules%}
+
+{%build-repl%}
+
+#+end_src
+
+#+RESULTS:
+
+
+* Commit, build, commit, deploy
+
+First we actually commit this log and what it needs.
+
+#+begin_src shell
+LD=$CC quasar build
+#+end_src
+
+#+begin_src shell
+git stash
+git checkout gh-pages
+git rm -rf .
+rsync -av dist/spa/ .
+git add css/ fonts/ js/ index.html
+git commit -m "Update gh-pages for log 0002"
+git push origin gh-pages
+git checkout main
+git stash pop
+#+end_src
+* Footnotes
+
+[fn:vunc] https://vuejs.org/v2/guide/components-registration.html#Name-Casing
+
+[fn:vlr] https://vuejs.org/v2/guide/components-registration.html#Local-Registration
+
+[fn:gs2js] https://github.com/roropincho/scm2js
+
+[fn:vc] https://vuejs.org/v2/guide/components.html
+
+[fn:rwe] Currently the royal "we".
+
+# Local Variables:
+# org-babel-noweb-wrap-start: "{%"
+# org-babel-noweb-wrap-end: "%}"
+# End:

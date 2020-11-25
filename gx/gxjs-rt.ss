@@ -1,11 +1,5 @@
 namespace: "#"
-(declare (extended-bindings))
 (declare (not inline))
-
-(def (alert thing) (##inline-host-statement "var foo = (@1@);
-  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
-  alert(bar);" thing))
-(def (console.log obj) (##inline-host-statement "console.log((@1@))" obj))
 
 ;; (define (apply proc arg1 . rest)
 ;;   (if (##pair? rest)
@@ -22,16 +16,11 @@ namespace: "#"
 
 ;;       (##apply proc arg1)))
 
-(def (plist->jso plist)
-  (def jso (##make-vector 0))
-  (def (p->o p)
-    (if (null? p) jso
-        (begin ; (console.log p)
-               (set! jso (##vector-set!
-                          jso (car p)
-                          (##inline-host-expression "g_scm2host(@1@);" (cadr p))))
-               (p->o (cddr p)))))
-  (##inline-host-expression "Object.fromEntries(Object.entries(@1@));" (p->o plist)))
+(def (error thing)
+  (if (##string? thing)
+    (set! thing (##inline-host-expression "g_scm2host(@1@)" thing)))
+  (##inline-host-statement "_e = (@1@);
+   if (_e instanceof Error) { throw _e } else { throw new Error(_e) };" thing))
 
 (def (length lst)
   (if (null? lst) 0 (+ 1 (length (##cdr lst)))))
@@ -47,42 +36,24 @@ namespace: "#"
         (loop (+ i 1) (##cdr l)))))
   vec)
 
-(def (gambit-module-name mod)
-  (def obj (##vector-ref (##vector-ref mod 0) 0))
-  (##inline-host-expression "(@1@).name" obj))
+(def (string-append . strs)
+  (def (strapp s1 s2)
+    (let* ((l1 (##string-length s1))
+           (l2 (##string-length s2))
+           (l3 (+ l1 l2))
+           (s3 (##make-string l3)))
+      (let lp ((n 0))
+        (if (< n l1)
+          (##string-set! s3 n (##string-ref s1 n))
+          (if (>= n l1)
+            (##string-set! s3 n (##string-ref s2 (- n l1)))))
+      (if (< n l3) (lp (+ 1 n))))
+                                        ;(##apply string-append s3 rst)
+      s3))
 
-(def (init-gambit-module mod)
-  (let ((init (##vector-ref mod 4)))
-    (if (not (##procedure? init)) (error "No init for " mod)
-      (init))))
+  (def str (car strs))
 
-(define (init-gambit-program)
-  (declare (extended-bindings) (not safe))
-    (let ((mods (##vector-ref ##program-descr 0)))
-      (let loop ((i 1)) ;; start at module after the current one
-        (if (##fx< i (##vector-length mods))
-            (let ((mod (##vector-ref mods i)))
-              (init-gambit-module mod) ;; call module's init procedure
-              (loop (##fx+ i 1)))))))
-
-(init-gambit-program)
-
-(##inline-host-declaration "
-gx_old_module_register = g_module_register;
-
-gx_gambit_module_table = [];
-
-gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }
-
-gx_gambit_module_register = function (module_descr) {
-  gx_gambit_module_table.push(module_descr);
-  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)
-    : gx_old_module_register(module_descr)
-}
-
-g_module_register = gx_gambit_module_register;
-
-// console.log(g_module_register);
-")
-
-(##inline-host-statement "gx_gambit_module_init = (g_scm2host(@1@)); " (lambda (mod) (init-gambit-module mod)))
+  (let applp ((lst (cdr strs)))
+    (if (null? lst) str
+        (begin (set! str (strapp str (car lst)))
+               (applp (cdr lst))))))

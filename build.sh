@@ -1,56 +1,49 @@
 #!/usr/bin/env bash
 _dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
-
-_gxc () {
- gxc -v -d . -S -static $1 || exit 1
-}
-
 echo dir: $_dir;
 _cd="cd $_dir/gx"; echo $_cd ; $_cd;
 
-_gxc gxjs-rt.ss
-_gxc hello.ss
-_gxc lazy-gambit-repl.ss
-_gxc gambit-module-test.ss
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
 
-# Compile the base -l library
-gsc  -target js -c -o gxjs-rt.js static/gxjs-rt.scm || exit 1;
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _statics="$_statics $1"
 
-# Make a link file from our hello to this runtime
-gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-rt static/hello.scm
+  echo "--- compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
 
-# Steal the registry init
-_hello_mod_init="$(grep -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)"
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/$_fn.scm
 
-echo Init for registry: $_hello_mod_init
+ _gxc $1;
+ _gsc $_st;
+ }
 
-# Compile a link file from our hello to the _gambit.js runtime.
-gsc -target js -o hello_.js -link static/hello.scm
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
 
-# replace the module init with the other one for our runtime.
+echo "Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."
+gsc -target js -o gxjs-link.js -link $_statics
 
-sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" hello_.js
+_gxjs_rt='cat gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
 
-# Compile our hello
+cp gxjs.js ../public/
 
-gsc -target js -o hello.js static/hello.scm
+_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
 
-# Make our actual runtime + hello into a proper js file
+cp vue.js hello.js gambit-module-test.js button-counter.js ../public
 
-_gxjs_rt='cat hello_.js hello.js gxjs-rt.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
-
-gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
-
-_lazy="cat g-module-reset.js lazy-mod-init.js lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
-
+_comp lazy-gambit-repl.ss
+_lazy="cat lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
 echo Building the gambit repl: \"$_lazy\"; bash -c "$_lazy";
-
-echo "Now the gambit-module-test"
-gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
-
-
-_cp='cp gxjs.js gambit-repl.js gambit-module-test.js ../public'; echo Copying finished JS: \"$_cp\"; $_cp;
-
-_gx_sv=../public/gerbil-system-version.js
-echo "Making a $_gx_sv file"
-gxi -e '(import :std/format)' -e '(display (format "export default \"~a\"" (gerbil-system-version-string)))' |tee $_gx_sv
+cp gambit-repl.js ../public

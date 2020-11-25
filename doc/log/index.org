@@ -1,0 +1,46 @@
+#+TITLE: Log Files: Giv'r and GTD!
+#+DATE: [2020-11-23 Mon]
+#+OPTIONS: toc:nil num:nil html5-fancy:t
+#+HTML_DOCTYPE: html5
+
+While developing *GxQuasar* I do so literately[fn:lp]. Often my logs contain the
+source code and regardless, in and of themselves, they are useful to all.
+
+#+ATTR_HTML: :target "_blank"
+If you find aaanything amiss make sure to [[https://github.com/drewc/gx-quasar/issues][let me know]].
+
+The first is actually numbered 0, but since lists seem to start at one, it is
+also [[file:0000_Getting-Started.org][unlisted]], titled *gx-quasar->GxQuasar: a simple idea to Gerbilize
+Javascript*. Of important note is [[file:0000_Getting-Started.org::#thirdreinit][Third Attempt: re-init registry]], where I begin
+to figure out *Gambit*'s module registry in *JavaScript*.
+
+ 1) [[file:0001_Make-It-Useful.org][Make It Useful: Lazy, Links and Publish]].
+
+    I start to lazy-load things and make a [[file:0001_Make-It-Useful.org::#plist->jso][plist->jso]] that's quite useful.
+
+ 2) [[file:0002_Lazy-Dynamic-Module-Init.org][Lazy Load, Dynamic modules, initialized]].
+
+    This is where I finally figure out how to bypass, or use the way it was
+    intended, the [[file:0002_Lazy-Dynamic-Module-Init.org::#RegisterJumpOnTrampoline][~g_module_register~]]. In particular I made a
+    ~g_module_init(...)~ function. Now I can load anything at will, including
+    the entire gambit runtime.
+
+    Also of interest is the first *Vue.js* component created [[file:0002_Lazy-Dynamic-Module-Init.org::#FirstVueGx][entirely in gerbil]].
+
+
+* Notes
+
+This is just the very start but already has me very excited. Gerbil in/on the
+browser!
+
+Just the kernel runtime? http://gambitscheme.org/wiki/index.php/GambitNds
+
+Tree shake? https://mailman.iro.umontreal.ca/pipermail/gambit-list/2008-October/002808.html
+
+Relevant compile thingies. https://mailman.iro.umontreal.ca/pipermail/gambit-list/2019-October/009189.html
+
+
+
+* Footnotes
+
+[fn:lp] https://en.wikipedia.org/wiki/Literate_programming

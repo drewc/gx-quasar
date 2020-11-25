@@ -1,7 +1,10 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
-      <q-toolbar>
+      <q-toolbar
+          class="bg-teal"
+
+        >
         <q-btn
           flat
           dense
@@ -48,7 +51,7 @@
 
 <script>
 import EssentialLink from 'components/EssentialLink.vue'
-import { links } from 'app/public/gxjs.js'
+import { links } from 'app/public/hello.js'
 import gxVersion from 'app/public/gerbil-system-version.js'
 const linksData = links
 

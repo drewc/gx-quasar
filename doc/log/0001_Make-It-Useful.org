@@ -75,9 +75,6 @@ Now, with the import, everything should work as expected. We also needed to chan
   : import { sourceCodeRun } from 'app/public/gambit-repl.js'
 
 
-
-
-
 * Links
 
 In the ~MainLayout.vue~ there is a series of link on the menu.
@@ -119,6 +116,9 @@ using a keyword as the index which creates a ~js~ object with those fields.
 
 We'll do so and copy it to make it an object that is not an array.
 
+#+begin_export html
+<a name="plist->jso"></a>
+#+end_export
 #+begin_src scheme :noweb-ref plist->jso
 (def (plist->jso plist)
   (def jso (##make-vector 0))
@@ -292,7 +292,11 @@ g_module_register = gx_gambit_module_register;
  "exports.Test = (arg) => {
    var hello_fn = g_scm2host(@1@)
    hello_fn('Test' + arg)
-}"
+}
+
+console.log('init gambit-modilr-test');
+
+"
  (lambda (str)
    (let* ((mod (##inline-host-expression "gx_gambit_module_table[1];"))
           (name (##gambit-module-name mod)))
@@ -486,7 +490,6 @@ echo Init for registry: $_hello_mod_init
 gsc -target js -o hello_.js -link static/hello.scm
 
 # replace the module init with the other one for our runtime.
-
 sed -i "s/^g_module_registry_init(.*/$_hello_mod_init/" hello_.js
 
 # Compile our hello
@@ -531,6 +534,3 @@ git push origin gh-pages
 git checkout main
 git stash pop
 #+end_src
-
-
-#+RESULTS:

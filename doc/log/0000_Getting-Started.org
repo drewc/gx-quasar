@@ -835,6 +835,9 @@ That seems to be that although that is in ~_gambit.js~ it's not loaded. Reversin
 Hrm.
 
 ** Third Attempt: re-init registry
+:PROPERTIES:
+:CUSTOM_ID: thirdreinit
+:END:
 
 
 Compilation of an exe that contains all we want is a good start. Rather than our
