@@ -1,0 +1,1597 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-11-25 Wed 11:51 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>gx-quasar-&gt;GxQuasar: a simple idea to Gerbilize Javascript</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Drew Crampsie" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.cacheClassElem = elem.className;
+         elem.cacheClassTarget = target.className;
+         target.className = "code-highlighted";
+         elem.className   = "code-highlighted";
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(elem.cacheClassElem)
+         elem.className = elem.cacheClassElem;
+       if(elem.cacheClassTarget)
+         target.className = elem.cacheClassTarget;
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">gx-quasar-&gt;GxQuasar: a simple idea to Gerbilize Javascript</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgeda801d">1. Install Quasar</a></li>
+<li><a href="#orgaf5a986">2. Hello World! Let&rsquo;s get easy.</a>
+<ul>
+<li><a href="#org1cbe1e1">2.1. <code>hello-world-rt</code> and <code>hello-world.ss</code> : The hello world program</a></li>
+</ul>
+</li>
+<li><a href="#orgd328205">3. <code>hello-gxjs-rt</code>: Things get a little harder.</a>
+<ul>
+<li><a href="#org4b5103b">3.1. <code>hello.ss</code> a Gerbil scheme file with our new runtime lib</a></li>
+<li><a href="#org1893681">3.2. <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</a></li>
+<li><a href="#orgc301f79">3.3. Now compilation to different <code>js</code> files!</a></li>
+<li><a href="#orgfee710f">3.4. The new <code>Index.vue</code></a></li>
+</ul>
+</li>
+<li><a href="#org3e71561">4. Full on <b>Gambit Scheme</b></a></li>
+<li><a href="#org96e6c04">5. Lazy-load <code>_gambit.js</code>.</a>
+<ul>
+<li><a href="#org1eaa773">5.1. First attempt</a></li>
+<li><a href="#org19d9fe3">5.2. Second Attempt: Make/change link files.</a></li>
+<li><a href="#thirdreinit">5.3. Third Attempt: re-init registry</a></li>
+<li><a href="#org4e2c8e2">5.4. A new <code>Index.vue</code></a></li>
+</ul>
+</li>
+<li><a href="#orgf1585f7">6. Build and deploy the app</a></li>
+</ul>
+</div>
+</div>
+<p>
+I&rsquo;ve been a <b>[back|middle|front]</b>-end web developer for pretty much my entire
+career. For the last 16 years or so (<span class="timestamp-wrapper"><span class="timestamp">[2020-10-30 Fri] </span></span> is today) I&rsquo;ve used Lisp.
+</p>
+
+<p>
+Javascript was actually developed based on scheme and prototyped in Common
+Lisp<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>. I program in Gerbil Scheme<sup><a id="fnr.2" class="footref" href="#fn.2">2</a></sup>, a meta-dialect of Scheme with
+post-modern features, whenever possible. The idea of using it for browser
+development certainly piqued my interest.
+</p>
+
+<p>
+This is an outline of the first attempt.
+</p>
+
+<div id="outline-container-orgeda801d" class="outline-2">
+<h2 id="orgeda801d"><span class="section-number-2">1</span> Install Quasar</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+My main use of the browser is a GUI for my systems. My laptop and servers run
+NixOS<sup><a id="fnr.3" class="footref" href="#fn.3">3</a></sup>. We&rsquo;ll use the unstable <code>&lt;nixpkgs&gt;</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+nix-channel --update
+</pre>
+</div>
+
+<p>
+NodeJS 12 and yarn are the current choices.
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">nix-env -iA nixpkgs.yarn nixpkgs.yarn2nix nixpkgs.nodejs-12_x
+</pre>
+</div>
+
+<p>
+<a href="https://quasar.dev/quasar-cli/installation">https://quasar.dev/quasar-cli/installation</a> is a quick read but in essence:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">  yarn global add @quasar/cli
+  <span style="color: #5B6268;"># </span><span style="color: #5B6268;">in ~/.bashrc or equivalent</span>
+  <span style="color: #c678dd;">export</span> <span style="color: #dcaeea;">PATH</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">yarn</span><span style="color: #51afef; font-weight: bold;"> global bin)</span><span style="color: #98be65;">:</span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">PATH</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #dcaeea;">LD</span>=$<span style="color: #dcaeea;">CC</span> yarn install
+</pre>
+</div>
+
+<p>
+The <code>LD=$CC</code> is so the builder can find the libraries it wants. So create a
+project.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">LD</span>=$<span style="color: #dcaeea;">CC</span> quasar create
+<span style="color: #5B6268;">#  </span><span style="color: #5B6268;">[...]</span>
+<span style="color: #5B6268;">#  </span><span style="color: #5B6268;">[*] Quasar Project initialization finished!</span>
+</pre>
+</div>
+
+<p>
+We&rsquo;ll also use it for dev.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">LD</span>=$<span style="color: #dcaeea;">CC</span> quasar dev
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgaf5a986" class="outline-2">
+<h2 id="orgaf5a986"><span class="section-number-2">2</span> Hello World! Let&rsquo;s get easy.</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+Gerbil uses Gambit Scheme<sup><a id="fnr.4" class="footref" href="#fn.4">4</a></sup> as its backend/compiler. Gambit recently got a
+universal backend where it can compile to anything, and JavaScript AKA <code>js</code> is
+one of its targets.
+</p>
+
+<p>
+<a href="https://mailman.iro.umontreal.ca/pipermail/gambit-list/2020-March/009363.html">https://mailman.iro.umontreal.ca/pipermail/gambit-list/2020-March/009363.html</a> is
+a great overview.
+</p>
+
+<p>
+Marc Feeley goes into some detail here:
+<a href="https://gitter.im/gambit/gambit?at=5bc7fb95435c2a518ec448d1">https://gitter.im/gambit/gambit?at=5bc7fb95435c2a518ec448d1</a>
+</p>
+
+<p>
+One things I do want to avoid is having to load the entire Gambit system (30MB+)
+every time I use it. It&rsquo;s very easy to do.
+</p>
+</div>
+
+<div id="outline-container-org1cbe1e1" class="outline-3">
+<h3 id="org1cbe1e1"><span class="section-number-3">2.1</span> <code>hello-world-rt</code> and <code>hello-world.ss</code> : The hello world program</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+First our custom runtime library. We&rsquo;ll simply use gerbil and have nothing in
+it.
+</p>
+
+<p>
+By &ldquo;nothing&rdquo; I mean one function that runs at the very end of things and
+initializes each gambit &ldquo;module&rdquo;.
+</p>
+
+<p>
+The <code>(declare (extended-bindings))</code> is for the <code>##</code> functions. Because we are
+not using gambit for our runtime that&rsquo;s needed.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">run-each-module</span>)
+  (<span style="color: #51afef;">declare</span> (extended-bindings) (<span style="color: #51afef;">not</span> safe))
+  (<span style="color: #51afef;">let</span> ((mods (<span style="color: #c678dd;">##</span>vector-ref <span style="color: #c678dd;">##</span>program-descr 0)))
+    (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((i 1)) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">start at module after the current one</span>
+      (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>fx&lt; i (<span style="color: #c678dd;">##</span>vector-length mods))
+            (<span style="color: #51afef;">let</span> ((mod (<span style="color: #c678dd;">##</span>vector-ref mods i)))
+              ((<span style="color: #c678dd;">##</span>vector-ref mod 4)) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">call module's init procedure</span>
+              (loop (<span style="color: #c678dd;">##</span>fx+ i 1)))))))
+
+(run-each-module) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">run each module (after the current one)</span>
+</pre>
+</div>
+
+<p>
+Because we are using gerbil but want to use gambit as well, although <code>gxc</code> does
+allow things to pass to <code>gsc</code>, we&rsquo;ll simply do it manually.
+</p>
+
+<p>
+Passing the <code>-v -d . -S -static</code> options tell <code>gxc</code> that we want things our way.
+</p>
+
+<dl class="org-dl">
+<dt>-v</dt><dd>Be verbose</dd>
+<dt>-d .</dt><dd>Output to the current directory</dd>
+<dt>-S .</dt><dd>Don&rsquo;t invoke <code>gsc</code>, we&rsquo;ll do it</dd>
+<dt>-static</dt><dd>output a gambit scheme file that is what <code>gxc</code> would have
+output.</dd>
+</dl>
+
+<div class="org-src-container">
+<pre class="src src-shell">gxc -v -d . -S -static hello-world-rt.ss
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">compile hello-world-rt.ss</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">compile hello-world-rt</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">compile ./hello-world-rt__0.scm</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">copy static module ./hello-world-rt__0.scm =&gt; ./static/hello-world-rt.scm</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">compile ./hello-world-rt__rt.scm</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">compile ./hello-world-rt.ssi</span>
+<span style="color: #ECBE7B;">rm</span> hello-world-rt.ssi
+</pre>
+</div>
+
+<p>
+Now time to play a gambit and output <code>js</code>. We&rsquo;ll use <code>gsc</code> with the following.
+</p>
+
+<dl class="org-dl">
+<dt>-verbose</dt><dd>Verbosity is always a good thing while learning/debugging.</dd>
+<dt>-target js</dt><dd>Aim for JavaScript!!</dd>
+<dt>-c</dt><dd>Compile to target language source files (.c, .js, &#x2026;)</dd>
+<dt>-o</dt><dd>Output to this file please</dd>
+</dl>
+
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -verbose -target js -c -o hello-world-rt.js static/hello-world-rt.scm
+</pre>
+</div>
+
+<p>
+That leaves us with a very small runtime! <code>8k</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">du hello-world-rt.js -h
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">8.0K    hello-world-rt.js</span>
+</pre>
+</div>
+
+<p>
+It doesn&rsquo;t actually do anything. A simple gerbil file that allows us to <code>alert</code>
+with a message from <code>js</code>, AKA <code>host</code> will be our first attempt at <b>FFI</b>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:gerbil/gambit</span>)
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">alert</span> str)
+  (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"alert('Hello!! ' + g_scm2host(@1@));"</span> str))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn(arg)</span>
+<span style="color: #98be65;">}"</span>
+ (<span style="color: #51afef;">lambda</span> (str) (alert str)))
+</pre>
+</div>
+
+<p>
+That introduces functions.
+</p>
+
+<dl class="org-dl">
+<dt><code>##inline-host-statement</code></dt><dd>A scheme function that takes a constant string
+and optionally arguments to place inside that statement that are marked with the <code>@N@</code> replacement string.</dd>
+<dt>g<sub>scm2host</sub>(&#x2026;)</dt><dd>A <code>js</code> function which takes a scheme primitive and turns
+it into a javascript primitive.</dd>
+</dl>
+
+<p>
+Let&rsquo;s make it into a <code>js</code> file! First the normal <code>gxc</code>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">gxc -d . -S -static hello-world.ss
+<span style="color: #ECBE7B;">rm</span> hello-world.ssi
+</pre>
+</div>
+
+<p>
+And now for something different.
+</p>
+
+<dl class="org-dl">
+<dt>- l hello-world-rt</dt><dd>Link to our runtime as the base library to use</dd>
+<dt>-exe</dt><dd>Output an executable file that contains everything needed.</dd>
+</dl>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -l hello-world-rt -exe -o hello-world.js static/hello-world.scm
+<span style="color: #ECBE7B;">cp</span> hello-world.js ../public/
+</pre>
+</div>
+
+<p>
+The generated JS does not pass <code>eslint</code>, and we have that set up for quasar in
+order to be dev friendly.
+</p>
+
+
+<p>
+Let&rsquo;s get rid of eslint for that public directory. Look for this in
+<code>quasar.conf.js</code> and edit the exclude.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-js">      <span style="color: #5B6268;">// </span><span style="color: #5B6268;">https://quasar.dev/quasar-cli/handling-webpack</span>
+      extendWebpack (cfg) {
+        cfg.module.rules.push({
+          enforce: <span style="color: #98be65;">'pre'</span>,
+          test: <span style="color: #98be65;">/\.(js|vue)$/</span>,
+          loader: <span style="color: #98be65;">'eslint-loader'</span>,
+          exclude: <span style="color: #98be65;">/(node_modules|public)/</span>
+        })
+      }
+</pre>
+</div>
+
+
+<p>
+Everything is now For The Web! So let&rsquo;s make a <b>Quasar</b> page that hellos our
+world.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"flex flex-center"</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('World!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+import { Hello } from 'app/public/hello-world.js'
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      Hello(arg)
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+
+<p>
+It actually works! for <code>20k</code> I can have scheme in the browser. That means a lot!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">du -h hello-world.js
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">20.0K   hello-world.js</span>
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd328205" class="outline-2">
+<h2 id="orgd328205"><span class="section-number-2">3</span> <code>hello-gxjs-rt</code>: Things get a little harder.</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+One thing I desire is the ability to load on demand as well as use both languages the way they are meant to be used. Anyone familiar with <b>FFI</b> knows this is never easy.
+</p>
+
+<p>
+In this case the first thing that pops up is <b>modules</b>. <code>js</code> has them, <code>gerbil</code> has them, <code>gambit</code> has them, and they all differ.
+</p>
+
+<p>
+Because we want to use <code>gerbil</code> and <code>js</code> with <code>gambit</code> being a distant cousin we
+have to mess around.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> gxjs
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">alert</span> thing) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"var foo = (@1@);</span>
+<span style="color: #98be65;">  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)</span>
+<span style="color: #98be65;">  alert(bar);"</span> thing))
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">console.log</span> obj) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"console.log((@1@))"</span> obj))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">gambit-module-name</span> mod)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">obj</span> (<span style="color: #c678dd;">##</span>vector-ref (<span style="color: #c678dd;">##</span>vector-ref mod 0) 0))
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"(@1@).name"</span> obj))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">init-gambit-module</span> mod)
+  (<span style="color: #51afef;">let</span> ((init (<span style="color: #c678dd;">##</span>vector-ref mod 4)))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (<span style="color: #c678dd;">##</span>procedure? init)) (<span style="color: #51afef;">error</span> <span style="color: #98be65;">"No init for "</span> mod)
+      (init))))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">init-gambit-program</span>)
+  (<span style="color: #51afef;">declare</span> (extended-bindings) (<span style="color: #51afef;">not</span> safe))
+    (<span style="color: #51afef;">let</span> ((mods (<span style="color: #c678dd;">##</span>vector-ref <span style="color: #c678dd;">##</span>program-descr 0)))
+      (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((i 1)) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">start at module after the current one</span>
+        (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>fx&lt; i (<span style="color: #c678dd;">##</span>vector-length mods))
+            (<span style="color: #51afef;">let</span> ((mod (<span style="color: #c678dd;">##</span>vector-ref mods i)))
+              (init-gambit-module mod) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">call module's init procedure</span>
+              (loop (<span style="color: #c678dd;">##</span>fx+ i 1)))))))
+
+(init-gambit-program)
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"</span>
+<span style="color: #98be65;">gx_old_module_register = g_module_register;</span>
+
+<span style="color: #98be65;">gx_gambit_module_table = [];</span>
+
+<span style="color: #98be65;">gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }</span>
+
+<span style="color: #98be65;">gx_gambit_module_register = function (module_descr) {</span>
+<span style="color: #98be65;">  gx_gambit_module_table.push(module_descr);</span>
+<span style="color: #98be65;">  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)</span>
+<span style="color: #98be65;">    : gx_old_module_register(module_descr)</span>
+<span style="color: #98be65;">}</span>
+
+<span style="color: #98be65;">g_module_register = gx_gambit_module_register;</span>
+
+<span style="color: #98be65;">console.log(g_module_register);</span>
+
+<span style="color: #98be65;">"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"gx_gambit_module_init = (g_scm2host(@1@))"</span> (<span style="color: #51afef;">lambda</span> (mod) (init-gambit-module mod)))
+</pre>
+</div>
+</div>
+
+
+<div id="outline-container-org4b5103b" class="outline-3">
+<h3 id="org4b5103b"><span class="section-number-3">3.1</span> <code>hello.ss</code> a Gerbil scheme file with our new runtime lib</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">declare</span> (extended-bindings))
+(<span style="color: #51afef;">extern</span> <span style="color: #c678dd;">namespace:</span> gxjs alert)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn('Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+ (<span style="color: #51afef;">lambda</span> (str) (alert str)))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1893681" class="outline-3">
+<h3 id="org1893681"><span class="section-number-3">3.2</span> <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</h3>
+<div class="outline-text-3" id="text-3-2">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">declare</span> (extended-bindings))
+(<span style="color: #51afef;">extern</span> <span style="color: #c678dd;">namespace:</span> gxjs alert console.log)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Test = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn('Test' + arg)</span>
+<span style="color: #98be65;">}"</span>
+ (<span style="color: #51afef;">lambda</span> (str)
+   (<span style="color: #51afef;">let*</span> ((mod (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"gx_gambit_module_table[1];"</span>))
+          (name (gxjs<span style="color: #c678dd;">#</span>gambit-module-name mod)))
+     (console.log mod)
+
+     (alert str) (alert name))))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc301f79" class="outline-3">
+<h3 id="orgc301f79"><span class="section-number-3">3.3</span> Now compilation to different <code>js</code> files!</h3>
+<div class="outline-text-3" id="text-3-3">
+<div class="org-src-container">
+<pre class="src src-shell">gxc -v -d . -S -static hello-gxjs-rt.ss
+gxc -v -d . -S -static hello.ss
+gxc -v -d . -S -static gambit-module-test.ss
+
+gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">Now output the modules test as a standalone</span>
+gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">and copy to public</span>
+
+<span style="color: #ECBE7B;">cp</span> hello-gxjs.js gambit-module-test.js ../public
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgfee710f" class="outline-3">
+<h3 id="orgfee710f"><span class="section-number-3">3.4</span> The new <code>Index.vue</code></h3>
+<div class="outline-text-3" id="text-3-4">
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"flex flex-center"</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('World! Tangle!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Test('World! Tangle!')"</span>&gt; Test function&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+
+import { Hello } from 'app/public/hello-gxjs.js'
+
+import { Test } from 'app/public/gambit-module-test.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+<p>
+And it works! Yay!
+</p>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3e71561" class="outline-2">
+<h2 id="org3e71561"><span class="section-number-2">4</span> Full on <b>Gambit Scheme</b></h2>
+<div class="outline-text-2" id="text-4">
+<p>
+<a href="https://udem-dlteam.github.io/webapp-tutorial/">https://udem-dlteam.github.io/webapp-tutorial/</a> and
+<a href="https://github.com/udem-dlteam/webapp-tutorial">https://github.com/udem-dlteam/webapp-tutorial</a> are wonderful places to start. It
+basically shows we can have a full gambit-in-browser.
+</p>
+
+
+<p>
+Let&rsquo;s build our hello with a full gambit and see.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">bash &lt;&lt;EOF
+<span style="color: #98be65;">gxc -v -d . -S -static gambit-hello-world.ss</span>
+<span style="color: #98be65;">gxc -v -d . -S -static gambit-hello-world-module-test.ss</span>
+<span style="color: #98be65;">gsc -target js -exe -o gambit-hello-world.js static/gambit-hello-world.scm</span>
+<span style="color: #98be65;">gsc -target js -o gambit-hello-world-module-test.js static/gambit-hello-world-module-test.scm</span>
+<span style="color: #98be65;">cp</span><span style="color: #98be65;"> gambit-hello-world*.js ../public/</span>
+<span style="color: #98be65;">EOF</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:gerbil/gambit</span>)
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+)
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">document.getElementById</span> id)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(document.getElementById(g_scm2host(@1@)))"</span> id))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">Element.innerText-ref</span> elem)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(g_foreign2host(@1@).innerText)"</span> elem))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">sourceCodeRun</span> id)
+  (<span style="color: #51afef;">let*</span> ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (<span style="color: #51afef;">let</span> ((expr (cons <span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>begin (with-input-from-string code read-all))))
+      (<span style="color: #51afef;">eval</span> expr))
+
+    ))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">init-gambit-module</span> mod)
+  (<span style="color: #51afef;">let</span> ((init (<span style="color: #c678dd;">##</span>vector-ref mod 4)))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (<span style="color: #c678dd;">##</span>procedure? init)) (<span style="color: #51afef;">error</span> <span style="color: #98be65;">"No init for "</span> mod)
+      (init))))
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"</span>
+<span style="color: #98be65;">gx_old_module_register = g_module_register;</span>
+
+<span style="color: #98be65;">gx_gambit_module_table = [];</span>
+
+<span style="color: #98be65;">gx_gambit_module_init = function (m) { alert('gx_gambit_module_init undefined') }</span>
+
+<span style="color: #98be65;">gx_gambit_module_register = function (module_descr) {</span>
+<span style="color: #98be65;">  gx_gambit_module_table.push(module_descr);</span>
+<span style="color: #98be65;">  typeof g_glo['##program-descr'] === 'object' ? gx_gambit_module_init(module_descr)</span>
+<span style="color: #98be65;">    : gx_old_module_register(module_descr)</span>
+<span style="color: #98be65;">}</span>
+
+<span style="color: #98be65;">g_module_register = gx_gambit_module_register;</span>
+
+<span style="color: #98be65;">console.log(g_module_register);</span>
+
+<span style="color: #98be65;">"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"gx_gambit_module_init = (g_scm2host(@1@))"</span> (<span style="color: #51afef;">lambda</span> (mod) (init-gambit-module mod)))
+
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"g_sourceCodeRun = function () { alert('sourceCodeRun'); };"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"g_sourceCodeRun = g_scm2host(@1@);"</span> sourceCodeRun)
+
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">declare</span> (extended-bindings))
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Test = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Test' + arg)</span>
+<span style="color: #98be65;">}"</span>
+)
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('WOrld! Tahgle!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Test('WOrld! Tahgle!')"</span>&gt; Test function&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+    &lt;<span style="color: #c678dd;">br</span>&gt;
+    &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"full-width"</span> <span style="color: #dcaeea;">contenteditable</span>=<span style="color: #98be65;">"true"</span> <span style="color: #dcaeea;">id</span>=<span style="color: #98be65;">"gx_repl"</span> <span style="color: #dcaeea;">style</span>=<span style="color: #98be65;">"max-width: 300px; height: 25vh; border: 2px solid black;"</span>&gt;
+    534
+   &lt;/<span style="color: #c678dd;">div</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"sourceCodeRun('gx_repl')"</span>&gt; Repl &lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+
+import { Hello } from 'app/public/gambit-hello-world.js'
+
+import { Test } from 'app/public/gambit-hello-world-module-test.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=&gt;' + val)
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org96e6c04" class="outline-2">
+<h2 id="org96e6c04"><span class="section-number-2">5</span> Lazy-load <code>_gambit.js</code>.</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+That works as well. So, now, an attempt to make the Gambit <code>_gambit</code> module
+become a dynamically loaded <code>js</code> module.
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:gerbil/gambit</span>)
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.evalElement = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Lazy? Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+)
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">document.getElementById</span> id)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(document.getElementById(g_scm2host(@1@)))"</span> id))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">Element.innerText-ref</span> elem)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(g_foreign2host(@1@).innerText)"</span> elem))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">sourceCodeRun</span> id)
+  (<span style="color: #51afef;">let*</span> ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (<span style="color: #51afef;">let</span> ((expr (cons <span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>begin (with-input-from-string code read-all))))
+      (<span style="color: #51afef;">eval</span> expr))
+
+    ))
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"g_sourceCodeRun = function () { alert('sourceCodeRun'); };"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"g_sourceCodeRun = g_scm2host(@1@);"</span> sourceCodeRun)
+
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org1eaa773" class="outline-3">
+<h3 id="org1eaa773"><span class="section-number-3">5.1</span> First attempt</h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+We&rsquo;ll simply try to insert it at the end of our custom run-time. It does not
+actually work but gives us great insights as to why.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">bash &lt;&lt;<span style="color: #98be65;">'EOF'</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static hello-gxjs-rt.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static hello.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static gambit-module-test.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static lazy-gambit-repl.ss</span>
+
+<span style="color: #98be65;"> gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm</span>
+<span style="color: #98be65;"> gsc -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm</span>
+
+<span style="color: #98be65;"> # Now output the modules test as a standalone</span>
+<span style="color: #98be65;"> gsc -target js -o gambit-module-test.js static/gambit-module-test.scm</span>
+
+<span style="color: #98be65;"> # Ok, now the lazy gambit repl</span>
+<span style="color: #98be65;"> gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm</span>
+
+<span style="color: #98be65;"> # and copy to public, including the _gambit.js</span>
+
+<span style="color: #98be65;"> _gambit_js=$(</span><span style="color: #51afef; font-weight: bold;">gsc</span><span style="color: #98be65;"> -e '(display (path-expand "~~lib/"))')/_gambit.js;</span>
+<span style="color: #98be65;"> _cp="</span><span style="color: #98be65;">cp</span><span style="color: #98be65;"> hello-gxjs.js lazy-gambit-repl.js gambit-module-test.js $_gambit_js ../public";</span>
+<span style="color: #98be65;"> </span><span style="color: #98be65;">echo</span><span style="color: #98be65;"> Copy $_cp; $_cp</span>
+
+<span style="color: #98be65;">EOF</span>
+</pre>
+</div>
+
+<p>
+It fails in the browser with
+</p>
+<pre class="example">
+ReferenceError: G_Bignum is not defined
+</pre>
+
+
+<p>
+Is that because our runtime lib does not require that but _gambit.js does? We&rsquo;ll
+use the <code>-verbose</code> and <code>-keep-temp</code> flags to find out.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">bash &lt;&lt;<span style="color: #98be65;">'EOF'</span>
+
+<span style="color: #98be65;"> gxc -v -d . -S -static hello-gxjs-rt.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static hello.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static gambit-module-test.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static lazy-gambit-repl.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static gambit-hello-world-module-test.ss</span>
+<span style="color: #98be65;"> gxc -v -d . -S -static gambit-hello-world.ss</span>
+
+<span style="color: #98be65;"> gsc -target js -o gambit-hello-world-module-test.js static/gambit-hello-world-module-test.scm</span>
+
+<span style="color: #98be65;"> # Now output the modules test as a standalone</span>
+<span style="color: #98be65;"> gsc -target js -o gambit-module-test.js static/gambit-module-test.scm</span>
+
+<span style="color: #98be65;"> # Ok, now the lazy gambit repl</span>
+<span style="color: #98be65;"> gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm</span>
+
+<span style="color: #98be65;"> gsc -verbose -keep-temp -target js -exe -o gambit-hello-world.js static/gambit-hello-world.scm</span>
+
+<span style="color: #98be65;"> gsc -verbose -keep-temp -target js -o hello-gxjs.js -exe -l hello-gxjs-rt static/hello.scm</span>
+<span style="color: #98be65;">EOF</span>
+</pre>
+</div>
+
+<p>
+That ends up giving us some interesting details.
+</p>
+
+<pre class="example">
+cat static/gambit-hello-world_.o static/gambit-hello-world.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" &gt; "gambit-hello-world.js"
+cat static/hello_.o static/hello.o "hello-gxjs-rt.js" &gt; "hello-gxjs.js"
+</pre>
+
+
+<p>
+The <code>*_.o</code> files are generated by the complier. Here are the options.
+</p>
+
+<blockquote>
+<p>
+Output mode
+ -target l   Select target language to compile to (C, js, x86-64, &#x2026;)
+ -c          Compile to target language source files (.c, .js, &#x2026;)
+ -link       Generate a link file combining a set of compiled files
+ -obj        Compile to object files (.o, .obj)
+ -exe        Compile to an executable program or script
+ -dynamic    Compile to a .oN dynamically loadable file (default mode)
+</p>
+</blockquote>
+
+<p>
+Interesting! What happens with <code>-link</code>?
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -verbose -keep-temp -target js -link -o gambit-hello-world-link.js static/gambit-hello-world.scm
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">This does not have any files to "-keep-temp"! That's a good thing.</span>
+
+wc gambit-hello-world-link.js static/gambit-hello-world_.js
+     <span style="color: #da8548; font-weight: bold;">1518</span>      <span style="color: #da8548; font-weight: bold;">8271</span>    <span style="color: #da8548; font-weight: bold;">112123</span> gambit-hello-world-link.js
+     <span style="color: #da8548; font-weight: bold;">1518</span>      <span style="color: #da8548; font-weight: bold;">8271</span>    <span style="color: #da8548; font-weight: bold;">112119</span> static/gambit-hello-world_.js
+     <span style="color: #da8548; font-weight: bold;">3036</span>     <span style="color: #da8548; font-weight: bold;">16542</span>    <span style="color: #da8548; font-weight: bold;">224242</span> total
+
+</pre>
+</div>
+
+<p>
+That&rsquo;s brilliant. 4 char difference? Hmmmm.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"> bash &lt;&lt;<span style="color: #98be65;">'EOF'</span>
+<span style="color: #98be65;">_lnk='gambit-hello-world-link'</span>
+<span style="color: #98be65;">_under='gambit-hello-world_'</span>
+
+<span style="color: #98be65;">echo</span><span style="color: #98be65;"> char diff? =&gt; $(</span><span style="color: #51afef; font-weight: bold;">expr</span><span style="color: #98be65;"> `</span><span style="color: #98be65;">echo</span><span style="color: #98be65;"> $_lnk | wc -c` - `</span><span style="color: #98be65;">echo</span><span style="color: #98be65;"> $_under |wc -c`)</span>
+<span style="color: #98be65;">&gt;</span>
+<span style="color: #98be65;">EOF</span>
+
+  <span style="color: #5B6268;"># </span><span style="color: #5B6268;">char diff? =&gt; 4</span>
+
+</pre>
+</div>
+
+<p>
+Beyond the file name they are identical as a <code>diff</code> shows us.
+</p>
+
+<p>
+The differences between those and our <code>hello_.js</code> generated link file are
+immense.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">du -k gambit-hello-world-link.js static/hello_.js
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">112     gambit-hello-world-link.js</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">12      static/hello_.js</span>
+
+</pre>
+</div>
+
+<p>
+An extra 100k is a hellovalot. Can that one work with our existing hello?
+</p>
+
+<p>
+A quick <code>diff gambit-hello-world-link.js static/hello_.js</code> has almost all <code>-</code>
+lines besides the second line which is a comment that Gambit generates/uses and
+the last line.
+</p>
+
+<p>
+The last line is likely the crucial one. With a wee bit of know-how about how
+gambit modules run/interact etc it makes perfect sense.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-diff"><span style="color: #aa2222; background-color: #23272e;">-</span><span style="color: #ff6c6b; background-color: #23272e;">g_module_registry_init([new G_ModLinkInfo("_gambit",0),new G_ModLinkInfo("gambit-hello-world",1)]);</span>
++g_module_registry_init([new G_ModLinkInfo("hello-gxjs-rt",0),new G_ModLinkInfo("hello",1)]);
+</pre>
+</div>
+
+<p>
+A different module registry seems to define when/how/if a &ldquo;module&rdquo; is
+initialized by the run time.
+</p>
+
+<p>
+Here is the <code>js</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_init = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">link_info</span>) {
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">n</span> = link_info.length;
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">i</span> = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_module_table = <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">Array</span>(n);
+  <span style="color: #51afef;">while</span> (i &lt; n) {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = <span style="color: #a9a1e1;">null</span>;
+    ++i;
+  }
+};
+</pre>
+</div>
+
+<p>
+Now every gambit module registers itself at the EOF.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">grep</span> <span style="color: #98be65;">'^g_module_register'</span> static/hello.js
+<span style="color: #c678dd;">g_module_register</span><span style="color: #51afef;">(</span><span style="color: #c678dd;">[</span><span style="color: #98be65;">[</span>g_make_interned_symbol<span style="color: #51afef;">(</span><span style="color: #98be65;">"hello"</span><span style="color: #51afef;">)</span><span style="color: #98be65;">]</span>,<span style="color: #98be65;">[]</span>,null,1,g_bb1_hello_23_,false<span style="color: #c678dd;">]</span><span style="color: #51afef;">)</span>;
+</pre>
+</div>
+
+<p>
+The source for that is brilliant as it tells me what I need to know and why we
+had to init the way we did. The comments are all mine.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_register = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">module_descr</span>) {
+
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">The interned symbol of the name in an array</span>
+
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">temp</span> = module_descr[<span style="color: #da8548; font-weight: bold;">0</span>];
+
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">the name of the module.</span>
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">name</span> = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>].name;
+
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">Search for it in the module registry by name.</span>
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = Object.<span style="color: #a9a1e1;">prototype</span>.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : <span style="color: #a9a1e1;">null</span>;
+
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">Set the latest registered to this module</span>
+  g_module_latest_registered = module_descr;
+
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">If we are not waiting for this module OR we already have all we are waiting</span>
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">for, ignore it.</span>
+
+  <span style="color: #51afef;">if</span> (!(info === <span style="color: #a9a1e1;">null</span> || g_module_count === g_module_table.length)) {
+
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">on initialization we gave this an index and a name.</span>
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">index</span> = info.index;
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">If this is already registered, let us know.</span>
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">old</span> = g_module_table[index];
+
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">regardless, this new module is in the table.</span>
+
+    g_module_table[index] = module_descr;
+
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">If there was no old, increase the count and continue.</span>
+    <span style="color: #51afef;">if</span> (old === <span style="color: #a9a1e1;">null</span>) {
+      ++g_module_count;
+      <span style="color: #5B6268;">// </span><span style="color: #5B6268;">If we have all the modules, let the program</span>
+      <span style="color: #51afef;">if</span> (g_module_count === g_module_table.length) {
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">set the global ##program-descr to an array of the module table and</span>
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">two other things I do not understand.</span>
+        g_glo[<span style="color: #98be65;">"##program-descr"</span>] = [g_module_table,<span style="color: #a9a1e1;">null</span>,<span style="color: #a9a1e1;">false</span>];
+
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">This is the array of a symbol that names the last module in the</span>
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">init.</span>
+        temp = g_module_table[g_module_table.length - <span style="color: #da8548; font-weight: bold;">1</span>][<span style="color: #da8548; font-weight: bold;">0</span>];
+        g_glo[<span style="color: #98be65;">"##vm-main-module-ref"</span>] = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>];
+
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">I think this is the prefix to running a function via the trampoline</span>
+        g_sp = -<span style="color: #da8548; font-weight: bold;">1</span>;
+        g_stack[++g_sp] = <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+        g_r0 = g_underflow;
+        g_nargs = <span style="color: #da8548; font-weight: bold;">0</span>;
+
+        <span style="color: #5B6268;">// </span><span style="color: #5B6268;">This runs the init procedure of the first registry_init we specified.</span>
+
+        g_trampoline(g_module_table[<span style="color: #da8548; font-weight: bold;">0</span>][<span style="color: #da8548; font-weight: bold;">4</span>]);
+      }
+    }
+  }
+};
+
+</pre>
+</div>
+
+<p>
+That helps a lot! We already test and initialize them on their own when the
+registry is full. Knowing the order they are initialized we can simply replace
+the init function.
+</p>
+
+
+
+<div class="org-src-container">
+<pre class="src src-shell">gxc -v -d . -S -static link-gxjs-rt.ss
+gxc -v -d . -S -static hello-world.ss
+gsc -target js -c -o link-gxjs-rt.js static/link-gxjs-rt.scm
+gsc -target js -l link-gxjs-rt -link -o link-hello-world.js static/hello-world.scm
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org19d9fe3" class="outline-3">
+<h3 id="org19d9fe3"><span class="section-number-3">5.2</span> Second Attempt: Make/change link files.</h3>
+<div class="outline-text-3" id="text-5-2">
+<p>
+First, our normal hello-gxjs
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"> gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+</pre>
+</div>
+
+<p>
+Now make a <code>-link</code> rather than an <code>-exe</code>. We&rsquo;ll follow the gambit &ldquo;end with _&rdquo;.
+</p>
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o REMOVE-hello-gxjs_.js -link -l hello-gxjs-rt static/hello.scm
+<span style="color: #dcaeea;">_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-hello-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_mod_init</span>
+</pre>
+</div>
+
+
+<p>
+Time to create a <code>-link</code> that includes all that <code>_gambit.js</code> seems to need. We replace the module<sub>registry</sub><sub>init</sub> line.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -o hello_.js -link static/hello.scm
+sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_mod_init/"</span> hello_.js
+</pre>
+</div>
+
+<p>
+And compile the other modules.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"> gsc -target js -o hello.js static/hello.scm
+ gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+</pre>
+</div>
+
+<p>
+Now the fun part. Earlier we saw that compilation can simply <code>cat</code> <code>js</code> files together.
+</p>
+
+
+<pre class="example">
+cat static/gambit-hello-world_.o static/gambit-hello-world.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" &gt; "gambit-hello-world.js"
+cat static/hello_.o static/hello.o "hello-gxjs-rt.js" &gt; "hello-gxjs.js"
+</pre>
+
+
+<p>
+Doing the same, what happens?
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">cat</span> hello_.js hello.js hello-gxjs-rt.js &gt; hello-gxjs.js
+</pre>
+</div>
+
+<p>
+For the lazy we&rsquo;ll do <code>_gambit.js</code> first as the loading and initialization is taken care of by us.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">cat</span> $<span style="color: #51afef;">(</span><span style="color: #51afef; font-weight: bold;">gsc</span> -e <span style="color: #98be65;">'(display (path-expand "~~lib/_gambit.js"))'</span><span style="color: #51afef;">)</span> lazy-gambit-repl.js &gt; gambit-repl.js
+</pre>
+</div>
+
+<p>
+It doesn&rsquo;t work.
+</p>
+
+<pre class="example">
+g_glo.##current-readtable is not a function
+</pre>
+
+
+<p>
+That seems to be that although that is in <code>_gambit.js</code> it&rsquo;s not loaded. Reversing the order as an exe does also fails.
+</p>
+
+<p>
+Hrm.
+</p>
+</div>
+</div>
+
+<div id="outline-container-thirdreinit" class="outline-3">
+<h3 id="thirdreinit"><span class="section-number-3">5.3</span> Third Attempt: re-init registry</h3>
+<div class="outline-text-3" id="text-thirdreinit">
+<p>
+Compilation of an exe that contains all we want is a good start. Rather than our
+runtime we&rsquo;ll simply emulate the only thing <code>hello.ss</code> uses in a <code>gxsj-alert.ss</code> file.
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> gxjs
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">alert</span> thing) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"var foo = (@1@);</span>
+<span style="color: #98be65;">  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)</span>
+<span style="color: #98be65;">  alert(bar);"</span> thing))
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">console.log</span> obj) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"console.log((@1@))"</span> obj))
+</pre>
+</div>
+
+<p>
+Ok, same as last time, <code>gxc</code> everything.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"> gxc -v -d . -S -static hello-gxjs-rt.ss
+ gxc -v -d . -S -static gxjs-alert.ss
+ gxc -v -d . -S -static hello.ss
+ gxc -v -d . -S -static gambit-hello-world-module-test.ss
+ gxc -v -d . -S -static lazy-gambit-repl.ss
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -verbose -keep-temp -target js -exe -o gambit-nonlazy-hello.js static/gxjs-alert.scm static/hello.scm static/gambit-hello-world-module-test.scm static/lazy-gambit-repl.scm
+<span style="color: #ECBE7B;">cp</span> gambit-nonlazy-hello.js ../public/
+</pre>
+</div>
+
+<pre class="example">
+=&gt; cat static/lazy-gambit-repl_.o static/gxjs-alert.o static/hello.o static/gambit-hello-world-module-test.o static/lazy-gambit-repl.o "/nix/store/48ksq09y70dz19dyf8i411js6li9i968-gambit-unstable-2020-10-27/gambit/lib/_gambit.js" "gambit-nonlazy-hello.js"
+</pre>
+
+
+
+<p>
+And try in in <code>Index.vue</code>.
+</p>
+
+<pre class="example">
+import { Hello, Test } from 'app/public/gambit-nonlazy-hello.js'
+// This also imports all of _gambit.js
+</pre>
+
+
+<p>
+A quick look says the link file is identical save for the registry init. That&rsquo;s a good thing. Oh, and it works.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">_nonlazy_link</span>=<span style="color: #98be65;">'static/lazy-gambit-repl_.o'</span>
+<span style="color: #dcaeea;">_nonlazy_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' $_nonlazy_link)</span><span style="color: #98be65;">"</span>
+</pre>
+</div>
+
+<p>
+So like last time we&rsquo;ll build one that was the init we want
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -c -o hello-gxjs-rt.js static/hello-gxjs-rt.scm
+gsc -target js -o REMOVE-hello-gxjs_.js -link -l hello-gxjs-rt static/hello.scm
+
+<span style="color: #dcaeea;">_hello_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-hello-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_hello_mod_init</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -o hello_.js -link static/hello.scm
+sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_hello_mod_init/"</span> hello_.js
+gsc -target js -o hello.js static/hello.scm
+<span style="color: #ECBE7B;">cat</span> hello_.js hello.js hello-gxjs-rt.js &gt; hello-gxjs.js
+<span style="color: #ECBE7B;">cp</span> hello-gxjs.js ../public
+</pre>
+</div>
+
+<p>
+The entire reason behind this is after loading and initializing the module
+registry it to reset the module registry and init it again.
+</p>
+
+<p>
+So, to reset it we&rsquo;ll try this:
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">_mod_reset</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> '^g_module_.* = [^f]' hello_.js)</span><span style="color: #98be65;">"</span>
+
+
+<span style="color: #ECBE7B;">echo</span>  <span style="color: #98be65;">"$_mod_reset"</span> &gt; g-module-reset.js
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">g_module_count = 0;</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">g_module_map = {};</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">g_module_table = null;</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">g_module_latest_registered = null;</span>
+
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_count = <span style="color: #da8548; font-weight: bold;">0</span>;
+g_module_map = {};
+g_module_table = <span style="color: #a9a1e1;">null</span>;
+g_module_latest_registered = <span style="color: #a9a1e1;">null</span>;
+</pre>
+</div>
+
+<p>
+Now for a re-init. First, what does the link want?
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">gsc -target js -link -o gambit-repl_.js static/lazy-gambit-repl.scm
+<span style="color: #dcaeea;">_lazy_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' gambit-repl_.js)</span><span style="color: #98be65;">"</span>
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_lazy_mod_init</span> &gt; lazy-mod-init.js
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"delete g_glo['##program-descr']"</span> &gt;&gt; lazy-mod-init.js
+</pre>
+</div>
+
+<p>
+Compile the other modules
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-shell"> gsc -target js -o gambit-module-test.js static/gambit-module-test.scm
+ gsc -target js -o lazy-gambit-repl.js static/lazy-gambit-repl.scm
+</pre>
+</div>
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">cat</span> g-module-reset.js lazy-mod-init.js lazy-gambit-repl.js $<span style="color: #51afef;">(</span><span style="color: #51afef; font-weight: bold;">gsc</span> -e <span style="color: #98be65;">'(display (path-expand "~~lib/_gambit.js"))'</span><span style="color: #51afef;">)</span>  &gt; gambit-repl.js
+<span style="color: #ECBE7B;">cp</span> gambit-repl.js gambit-module-test.js ../public
+</pre>
+</div>
+
+<p>
+It works!!
+</p>
+
+<p>
+We can now lazy-load anything it seems.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org4e2c8e2" class="outline-3">
+<h3 id="org4e2c8e2"><span class="section-number-3">5.4</span> A new <code>Index.vue</code></h3>
+<div class="outline-text-3" id="text-5-4">
+<p>
+This is what we end up with.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"flex flex-center"</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('WOrld! Tahgle!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Test('WOrld! Tahgle!')"</span>&gt; Test function&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+    &lt;<span style="color: #c678dd;">br</span>&gt;
+    &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"full-width"</span> <span style="color: #dcaeea;">contenteditable</span>=<span style="color: #98be65;">"true"</span> <span style="color: #dcaeea;">id</span>=<span style="color: #98be65;">"gx_repl"</span> <span style="color: #dcaeea;">style</span>=<span style="color: #98be65;">"max-width: 300px; height: 25vh; border: 2px solid black;"</span>&gt;
+    534
+   &lt;/<span style="color: #c678dd;">div</span>&gt;
+    &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"sourceCodeRun('gx_repl')"</span>&gt; Repl &lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+
+// import { Hello, Test } from 'app/public/gambit-nonlazy-hello.js'
+
+import { Hello } from 'app/public/hello-gxjs.js'
+import { Test } from 'app/public/gambit-module-test.js'
+
+// var Test = Hello
+
+import 'app/public/gambit-repl.js'
+
+window.Hello = Hello
+window.Test = Test
+
+export default {
+  name: 'PageIndex',
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var val = g_sourceCodeRun(id)
+      alert('=&gt; ' + val)
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf1585f7" class="outline-2">
+<h2 id="orgf1585f7"><span class="section-number-2">6</span> Build and deploy the app</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+First we build!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">LD</span>=$<span style="color: #dcaeea;">CC</span> quasar build
+</pre>
+</div>
+
+<p>
+Now make sure that if/when I fsck things up there&rsquo;s a backup.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">cd</span> ../; rsync -av gx-quasar/ gx-quasar-bak;  <span style="color: #ECBE7B;">cd</span> -
+</pre>
+</div>
+
+<p>
+Now create a branch as an orphan.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">git</span> checkout --orphan gh-pages
+<span style="color: #ECBE7B;">git</span> <span style="color: #ECBE7B;">rm</span> -rf .
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">rm</span><span style="color: #5B6268;"> 'LICENSE'</span>
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">rm</span><span style="color: #5B6268;"> 'doc/log/0000_Getting-Started.org'</span>
+rsync -av dist/spa/ .
+<span style="color: #ECBE7B;">git</span> add css/ fonts/ js/ index.html
+<span style="color: #ECBE7B;">git</span> commit -m <span style="color: #98be65;">"First attempt at gh-pages"</span>
+<span style="color: #ECBE7B;">git</span> push origin gh-pages
+</pre>
+</div>
+
+<p>
+A quick look says it&rsquo;s working quite well!
+</p>
+
+<p>
+That will end this logfile as we&rsquo;re up and running. Next up will be to make it
+useful.
+</p>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+TODO: Find a link to the cvs of mozilla/netscape that has the CL program!
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.2" class="footnum" href="#fnr.2">2</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://cons.io/">https://cons.io/</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.3" class="footnum" href="#fnr.3">3</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://nixos.org/">https://nixos.org/</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.4" class="footnum" href="#fnr.4">4</a></sup> <div class="footpara"><p class="footpara">
+<a href="http://gambitscheme.org/">http://gambitscheme.org/</a>
+</p></div></div>
+
+
+</div>
+</div></div>
+<div id="postamble" class="status">
+<p class="author">Author: Drew Crampsie</p>
+<p class="date">Created: 2020-11-25 Wed 11:51</p>
+</div>
+</body>
+</html>

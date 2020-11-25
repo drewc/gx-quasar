@@ -1,0 +1,2089 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-11-25 Wed 11:50 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lazy Load, Dynamic modules, initialized</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Drew Crampsie" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.cacheClassElem = elem.className;
+         elem.cacheClassTarget = target.className;
+         target.className = "code-highlighted";
+         elem.className   = "code-highlighted";
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(elem.cacheClassElem)
+         elem.className = elem.cacheClassElem;
+       if(elem.cacheClassTarget)
+         target.className = elem.cacheClassTarget;
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">Lazy Load, Dynamic modules, initialized</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org44f1968">1. Gerbil time</a>
+<ul>
+<li><a href="#org32e5f38">1.1. Base Example to Gerbil!</a>
+<ul>
+<li><a href="#FirstVueGx">1.1.1. <code>namespace: vue</code> and <code>vue.js</code>: Our first gerbil component</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#orgd575721">2. Lazy/Dynamic &ldquo;modules&rdquo;</a></li>
+<li><a href="#RegisterJumpOnTrampoline">3. <code>g_module_register</code>, it&rsquo;s time we broke up.</a></li>
+<li><a href="#org83d348d">4. <code>gxjs-rt.ss</code>, it&rsquo;s time we broke (you) up as well.</a>
+<ul>
+<li><a href="#orgca426d8">4.1. Minimal &ldquo;Hello&rdquo; attempt.</a></li>
+<li><a href="#org5be735d">4.2. Small RT</a></li>
+<li><a href="#org85a14e1">4.3. Small FFI</a></li>
+<li><a href="#orgc138955">4.4. Separate Lazy Hello</a></li>
+<li><a href="#org56c6af8">4.5. <i>File</i> <code>gxjs-init.ss</code></a></li>
+<li><a href="#gxjsbsrt">4.6. <code>gxjs-rt</code>, now a minimal BS (bootstrap, not bovine feces) file.</a>
+<ul>
+<li><a href="#orgc38a3cb">4.6.1. <code>error</code></a></li>
+<li><a href="#org1099071">4.6.2. <code>length</code></a></li>
+<li><a href="#org55004f3">4.6.3. <code>list-&gt;vector</code></a></li>
+<li><a href="#org79b7731">4.6.4. <code>string-append</code></a></li>
+<li><a href="#org24ba4db">4.6.5. <i>File</i> <code>gxjs-rt.ss</code></a></li>
+</ul>
+</li>
+<li><a href="#gxjsffi">4.7. <code>gxjs-ffi</code></a>
+<ul>
+<li><a href="#org1c9fe92">4.7.1. <i>File</i> <code>gxjs-ffi.ss</code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#org6baee68">5. Putting it all together</a>
+<ul>
+<li><a href="#org2552d88">5.1. Build <code>gxjs</code></a></li>
+<li><a href="#org111bce6">5.2. Build the modules</a>
+<ul>
+<li><a href="#org673bfba">5.2.1. <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</a></li>
+</ul>
+</li>
+<li><a href="#org3d14289">5.3. Now the full gambit repl</a></li>
+</ul>
+</li>
+<li><a href="#org0754ef4">6. Boot File</a></li>
+<li><a href="#org2ecae73">7. <code>LogIndex.vue</code>, a logs component</a></li>
+<li><a href="#org8134045">8. <code>Index.vue</code></a></li>
+<li><a href="#orga22c67e">9. <code>MainLayout.vue</code>: Hello links please!</a></li>
+<li><a href="#orge4eb921">10. <code>build.sh</code>: A simple build script</a></li>
+<li><a href="#org31b4625">11. Commit, build, commit, deploy</a></li>
+</ul>
+</div>
+</div>
+<p>
+So far there is just a start at the API and FFI in the RT. Here&rsquo;s a lot more.
+</p>
+
+<div id="outline-container-org44f1968" class="outline-2">
+<h2 id="org44f1968"><span class="section-number-2">1</span> Gerbil time</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+<b>Quasar</b> uses <b>Vue.js</b> components<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup> and I&rsquo;ve really come to like that
+approach.
+</p>
+
+<p>
+Creating a <code>component</code> in <b>Gerbil</b> is the first step.
+</p>
+</div>
+
+<div id="outline-container-org32e5f38" class="outline-3">
+<h3 id="org32e5f38"><span class="section-number-3">1.1</span> Base Example to Gerbil!</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+The first example looks like this.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #5B6268;">// </span><span style="color: #5B6268;">Define a new component called button-counter</span>
+Vue.component(<span style="color: #98be65;">'button-counter'</span>, {
+  <span style="color: #c678dd;">data</span>: <span style="color: #51afef;">function</span> () {
+    <span style="color: #51afef;">return</span> {
+      count: <span style="color: #da8548; font-weight: bold;">0</span>
+    }
+  },
+  template: <span style="color: #98be65;">'&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;'</span>
+})
+</pre>
+</div>
+
+<p>
+I want to make it sexp.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(vue<span style="color: #c678dd;">#</span>component
+ <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+ <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span><span style="color: #c678dd;">count:</span> 0<span style="color: #dcaeea;">]</span>
+ <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;|</span>)
+</pre>
+</div>
+
+<p>
+We&rsquo;ll make a standalone component and import it to <b>Quasar</b>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">export</span> <span style="color: #51afef;">default</span> {
+  name: <span style="color: #98be65;">'ButtonCounter'</span>,
+  <span style="color: #c678dd;">data</span>: <span style="color: #51afef;">function</span> () {
+    <span style="color: #51afef;">return</span> {
+      count: <span style="color: #da8548; font-weight: bold;">0</span>
+    }
+  },
+  template: <span style="color: #98be65;">'&lt;button v-on:click="count++"&gt;JS:You clicked me {{ count }} times.&lt;/button&gt;'</span>
+}
+
+</pre>
+</div>
+
+<p>
+We&rsquo;ll make the template form <code>&lt;js-button-counter&gt;&lt;/js-button-counter&gt;</code>. <b>Vue.js</b>
+has &ldquo;Local Registration&rdquo;<sup><a id="fnr.2" class="footref" href="#fn.2">2</a></sup>. The <code>name:</code> matters not and we&rsquo;re not using
+<code>Vue.component(&lt;name&gt;, ...)</code> but rather &ldquo;ES2015 modules, such as through [&#x2026;]
+Webpack&rdquo;
+</p>
+
+<p>
+So, import the default with a very specific name.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">import</span> jsButtonCounter from <span style="color: #98be65;">'app/public/test-js-component.js'</span>
+</pre>
+</div>
+
+<p>
+Now in the component itself there&rsquo;s a field to import. And &ldquo;For each property in
+the components object, the key will be the name of the custom element, while the
+value will contain the options object for the component.&rdquo;<sup><a id="fnr.2.100" class="footref" href="#fn.2">2</a></sup>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">  components: { jsButtonCounter },
+</pre>
+</div>
+
+<p>
+Wait, no key? &ldquo;in ES2015+, placing a variable name like ComponentA inside an object is shorthand for ComponentA: ComponentA&rdquo;<sup><a id="fnr.2.100" class="footref" href="#fn.2">2</a></sup>.
+</p>
+
+<p>
+Ok, but I want <code>&lt;js-button-counter&gt;</code> in kebab-case, do I need a key?
+</p>
+
+<p>
+&ldquo;When defining a component with PascalCase, you can use either case when
+referencing its custom element. That means both <code>&lt;my-component-name&gt;</code> and
+<code>&lt;MyComponentName&gt;</code> are acceptable.&rdquo;<sup><a id="fnr.3" class="footref" href="#fn.3">3</a></sup>
+</p>
+
+<p>
+Yay! Adding the tag to our index and it &#x2026; fails to build.
+</p>
+<div class="org-src-container">
+<pre class="src src-html">&lt;<span style="color: #c678dd;">js-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">js-button-counter</span>&gt;
+</pre>
+</div>
+
+<p>
+I had to add the compiler to the <code>build:</code> property in <code>quasar.conf.js</code>. This is
+to get rid of the error:
+</p>
+
+<pre class="example">
+[Vue warn]: You are using the runtime-only build of Vue where the template compiler is not available.
+Either pre-compile the templates into render functions, or use the compiler-included build.
+</pre>
+
+
+<div class="org-src-container">
+<pre class="src src-javascript">  vueCompiler: <span style="color: #a9a1e1;">true</span>,
+</pre>
+</div>
+
+<p>
+It now works in the index! Time to try and gerbilize it.
+</p>
+</div>
+
+<div id="outline-container-FirstVueGx" class="outline-4">
+<h4 id="FirstVueGx"><span class="section-number-4">1.1.1</span> <code>namespace: vue</code> and <code>vue.js</code>: Our first gerbil component</h4>
+<div class="outline-text-4" id="text-FirstVueGx">
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> vue
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">component</span> . plist)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">rlist</span> <span style="color: #dcaeea;">[]</span>)
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((pl plist))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (null? pl))
+      (<span style="color: #51afef;">let</span> ((key (car pl))
+            (val (cadr pl))
+            (rst (cddr pl)))
+        (<span style="color: #51afef;">cond</span> ((eq? <span style="color: #c678dd;">data:</span> key)
+               (<span style="color: #51afef;">set!</span> val (<span style="color: #51afef;">let</span> ((v (js<span style="color: #c678dd;">#</span>js-&gt;foreign (js<span style="color: #c678dd;">#</span>plist-&gt;jso val))))
+                            v)))
+              ((<span style="color: #51afef;">and</span> (eq? <span style="color: #c678dd;">template:</span> key) (<span style="color: #c678dd;">##</span>symbol? val))
+               (<span style="color: #51afef;">set!</span> val (<span style="color: #c678dd;">##</span>symbol-&gt;string val))))
+        (<span style="color: #51afef;">set!</span> rlist (cons key (cons val rlist)))
+        (loop rst))))
+  (<span style="color: #51afef;">let</span> ((jso (js<span style="color: #c678dd;">#</span>plist-&gt;jso rlist)))
+    (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"comp = (@1@); const data = comp.data;</span>
+<span style="color: #98be65;">         comp.data = function () { return data } ; comp;"</span> jso)))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.ButtonCounter = (@1@);"</span>
+ (component
+  <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+  <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span> <span style="color: #c678dd;">count:</span> 0 <span style="color: #dcaeea;">]</span>
+  <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt; Gerbil!! You clicked me {{ count }} times.&lt;/button&gt;|</span>))
+</pre>
+</div>
+
+<p>
+Adding that compiled JS to our runtime and adding the component to our Index works wonders.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-html">   &lt;<span style="color: #c678dd;">button-counter</span>&gt;&lt;/<span style="color: #c678dd;">button-counter</span>&gt;
+</pre>
+</div>
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">import</span> { Hello, ButtonCounter } from <span style="color: #98be65;">'app/public/gxjs.js'</span>
+<span style="color: #5B6268;">// </span><span style="color: #5B6268;">[...]</span>
+<span style="color: #51afef;">export</span> <span style="color: #51afef;">default</span> {
+ <span style="color: #5B6268;">// </span><span style="color: #5B6268;">[...]</span>
+  components: { ButtonCounter, jsButtonCounter },
+ <span style="color: #5B6268;">// </span><span style="color: #5B6268;">[...]</span>
+ }
+</pre>
+</div>
+
+<p>
+The issue is that it needs to be added to the main file, as does a lot right
+now. This has almost everything to do with how <b>Gambit</b> initializes the file
+according to its module system.
+</p>
+
+<p>
+We&rsquo;ll &ldquo;fix&rdquo; that for our nefarious purposes.
+</p>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd575721" class="outline-2">
+<h2 id="orgd575721"><span class="section-number-2">2</span> Lazy/Dynamic &ldquo;modules&rdquo;</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+I want to have a component JS that is just the component.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"console.log('declare lzy button');"</span>)
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.lazyButtonCounter = (@1@);</span>
+<span style="color: #98be65;">   alert('lazy button!!');"</span>
+(vue<span style="color: #c678dd;">#</span>component
+  <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+  <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span> <span style="color: #c678dd;">count:</span> 0 <span style="color: #dcaeea;">]</span>
+  <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt; LAZYYY!!!! You clicked me {{ count }} times.&lt;/button&gt;|</span>))
+</pre>
+</div>
+
+<p>
+Here&rsquo;s the thing. The <code>##inline-host-declaration</code> becomes a toplevel statement
+in the file, so it is run at load time.
+</p>
+
+<p>
+But, because both <code>##inline-host-statement</code> and <code>##inline-host-expression</code>
+require scheme-y things that may not exist at load time, they are placed in a
+function, a scheme function, that is run when that &ldquo;gambit module&rdquo; is
+initialized.
+</p>
+
+<p>
+Compile it and make it a part of the <code>Index.vue</code>. It fails.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+_gxc button-counter.ss
+gsc -target js -o button-counter.js static/button-counter.scm
+
+<span style="color: #ECBE7B;">cp</span> button-counter.js ../public/
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-html">   &lt;<span style="color: #c678dd;">lazy-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">lazy-button-counter</span>&gt;
+</pre>
+</div>
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">import</span> { lazyButtonCounter } from <span style="color: #98be65;">'app/public/button-counter.js'</span>
+  components: { ButtonCounter, jsButtonCounter, lazyButtonCounter },
+</pre>
+</div>
+
+<p>
+If you notice, we put an alert in that runs when it is initialized. It currently
+does not run. That means our attempt at initiailzing things outside of gambit&rsquo;s
+<code>g_module_register</code> does not actually work.
+</p>
+
+<p>
+If we actually reset the registry, like we did for the gambit repl, it does
+work!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">_scm_file</span>=static/button-counter.scm;
+<span style="color: #dcaeea;">_fn</span>=$<span style="color: #51afef;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #dcaeea;">_scm_file</span> .scm<span style="color: #51afef;">)</span>;
+<span style="color: #dcaeea;">_lnk</span>=<span style="color: #98be65;">'REMOVE_'</span>$<span style="color: #dcaeea;">_fn</span><span style="color: #98be65;">'_.js'</span>
+<span style="color: #dcaeea;">_base</span>=<span style="color: #98be65;">'_base_'</span>$<span style="color: #dcaeea;">_fn</span><span style="color: #98be65;">'_.js'</span>
+<span style="color: #dcaeea;">_js</span>=$<span style="color: #dcaeea;">_fn</span>.js
+
+<span style="color: #ECBE7B;">echo</span> This link file has the right g_module_registry_init
+gsc -target js -o $<span style="color: #dcaeea;">_lnk</span> -link -l gxjs-rt $<span style="color: #dcaeea;">_scm_file</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">3</span>
+<span style="color: #dcaeea;">_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' $_lnk)</span><span style="color: #98be65;">"</span>
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_mod_init</span>
+
+<span style="color: #ECBE7B;">echo</span>  We need to re-register the gxjs-rt
+<span style="color: #dcaeea;">_gxjs_mod_reg</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_register\(' gxjs-rt.js)</span><span style="color: #98be65;">"</span>
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_gxjs_mod_reg</span>
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"moving the inital js"</span>
+<span style="color: #dcaeea;">_mv</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">mv</span><span style="color: #98be65;"> $_js $_base"</span>; <span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_mv</span> ; $<span style="color: #dcaeea;">_mv</span>
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Resetting module registry"</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"g_module_count = 0; g_module_map = {}; g_module_table = null; g_module_latest_registered = null; "</span> | tee $<span style="color: #dcaeea;">_js</span>
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Deleting the program description"</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"delete g_glo['##program-descr']"</span> | tee -a $<span style="color: #dcaeea;">_js</span>
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Adding the new module registry init"</span>
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_mod_init</span> | tee -a $<span style="color: #dcaeea;">_js</span>
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Appending the basic code"</span>
+<span style="color: #ECBE7B;">cat</span> $<span style="color: #dcaeea;">_base</span> &gt;&gt; $<span style="color: #dcaeea;">_js</span>;
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Registering the run time which will initilize the new code"</span>
+<span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_gxjs_mod_reg</span> | tee -a $<span style="color: #dcaeea;">_js</span>;
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"$_js is now completed."</span>
+<span style="color: #ECBE7B;">rm</span> $<span style="color: #dcaeea;">_base</span>; <span style="color: #ECBE7B;">cp</span> button-counter.js ../public/
+</pre>
+</div>
+
+<p>
+That means that the registration does what we try to do. We&rsquo;ll just steal it.
+</p>
+</div>
+</div>
+
+<div id="outline-container-RegisterJumpOnTrampoline" class="outline-2">
+<h2 id="RegisterJumpOnTrampoline"><span class="section-number-2">3</span> <code>g_module_register</code>, it&rsquo;s time we broke up.</h2>
+<div class="outline-text-2" id="text-RegisterJumpOnTrampoline">
+<div class="org-src-container">
+<pre class="src src-javascript">
+g_module_name = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">module_descr</span>) {
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">temp</span> = module_descr[<span style="color: #da8548; font-weight: bold;">0</span>];
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">name</span> = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>].name;
+  <span style="color: #51afef;">return</span> name;
+};
+
+g_module_init = <span style="color: #51afef;">function</span>(<span style="color: #dcaeea;">module_descr</span>) {
+  g_sp = -<span style="color: #da8548; font-weight: bold;">1</span>;
+  g_stack[++g_sp] = <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_r0 = g_underflow;
+  g_nargs = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_trampoline(module_descr[<span style="color: #da8548; font-weight: bold;">4</span>]);
+};
+
+gx_gambit_module_table = (<span style="color: #51afef;">typeof</span> gx_old_module_register === <span style="color: #98be65;">'undefined'</span>) ? [] : gx_gambit_module_table;
+
+g_module_register = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">module_descr</span>) {
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">Keep track of all registered modules.</span>
+  gx_gambit_module_table.push(module_descr);
+
+  <span style="color: #51afef;">if</span> ( <span style="color: #51afef;">typeof</span> g_glo[<span style="color: #98be65;">'##program-descr'</span>] === <span style="color: #98be65;">'object'</span> ) {
+    g_module_init(module_descr);
+  } <span style="color: #51afef;">else</span> {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">temp</span> = module_descr[<span style="color: #da8548; font-weight: bold;">0</span>];
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">name</span> = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>].name;
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = Object.<span style="color: #a9a1e1;">prototype</span>.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : <span style="color: #a9a1e1;">null</span>;
+    g_module_latest_registered = module_descr;
+    <span style="color: #51afef;">if</span> (!(info === <span style="color: #a9a1e1;">null</span> || g_module_count === g_module_table.length)) {
+      <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">index</span> = info.index;
+      <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">old</span> = g_module_table[index];
+      g_module_table[index] = module_descr;
+      <span style="color: #51afef;">if</span> (old === <span style="color: #a9a1e1;">null</span>) {
+        ++g_module_count;
+        <span style="color: #51afef;">if</span> (g_module_count === g_module_table.length) {
+          g_glo[<span style="color: #98be65;">"##program-descr"</span>] = [g_module_table,<span style="color: #a9a1e1;">null</span>,<span style="color: #a9a1e1;">false</span>];
+          temp = g_module_table[g_module_table.length - <span style="color: #da8548; font-weight: bold;">1</span>][<span style="color: #da8548; font-weight: bold;">0</span>];
+          g_glo[<span style="color: #98be65;">"##vm-main-module-ref"</span>] = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>];
+          g_sp = -<span style="color: #da8548; font-weight: bold;">1</span>;
+          g_stack[++g_sp] = <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+          g_r0 = g_underflow;
+          g_nargs = <span style="color: #da8548; font-weight: bold;">0</span>;
+          g_trampoline(g_module_table[<span style="color: #da8548; font-weight: bold;">0</span>][<span style="color: #da8548; font-weight: bold;">4</span>]);
+        }
+      }
+    }
+  }
+};
+
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"console.log('declare lazy init!!!! button');"</span>)
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #c678dd;">#</span>&lt;&lt;HOSTDECL
+
+ g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>name = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+   var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+   var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+   return name<span style="color: #5B6268;">;</span>
+ <span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+ g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init = function(module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+   g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+   g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+   g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+   g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+   g<span style="color: #c678dd;">_</span>trampoline(module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+ <span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+ gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = (typeof gx<span style="color: #c678dd;">_</span>old<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>register === <span style="color: #51afef;">'</span>undefined<span style="color: #51afef;">'</span>) <span style="color: #c678dd;">?</span> <span style="color: #dcaeea;">[]</span> : gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #5B6268;">;</span>
+
+ g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>register = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+   // Keep track of all registered modules.
+   gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.push(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+
+   if ( typeof g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>program-descr<span style="color: #51afef;">'</span><span style="color: #dcaeea;">]</span> === <span style="color: #51afef;">'</span>object<span style="color: #51afef;">'</span> ) <span style="color: #dcaeea;">{</span>
+     g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+   <span style="color: #dcaeea;">}</span> else <span style="color: #dcaeea;">{</span>
+     var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+     var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+     var info = Object.prototype.hasOwnProperty.call(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #51afef;">,</span>name) <span style="color: #c678dd;">?</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #dcaeea;">[</span>name<span style="color: #dcaeea;">]</span> : null<span style="color: #5B6268;">;</span>
+     g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>latest<span style="color: #c678dd;">_</span>registered = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+     if (<span style="color: #c678dd;">!</span>(info === null <span style="color: #98be65;">||</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length)) <span style="color: #dcaeea;">{</span>
+       var index = info.index<span style="color: #5B6268;">;</span>
+       var old = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+       g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span> = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+       if (old === null) <span style="color: #dcaeea;">{</span>
+         ++g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count<span style="color: #5B6268;">;</span>
+         if (g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length) <span style="color: #dcaeea;">{</span>
+           g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##program-descr"</span><span style="color: #dcaeea;">]</span> = <span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #51afef;">,</span>null<span style="color: #51afef;">,</span>false<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+           temp = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length - 1<span style="color: #dcaeea;">][</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##vm-main-module-ref"</span><span style="color: #dcaeea;">]</span> = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+           g<span style="color: #c678dd;">_</span>trampoline(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">][</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+         <span style="color: #dcaeea;">}</span>
+       <span style="color: #dcaeea;">}</span>
+     <span style="color: #dcaeea;">}</span>
+   <span style="color: #dcaeea;">}</span>
+ <span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+HOSTDECL
+)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.lazyButtonCounter = (@1@);</span>
+<span style="color: #98be65;">   console.log('lazy init!! button!!');"</span>
+(vue<span style="color: #c678dd;">#</span>component
+  <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+  <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span> <span style="color: #c678dd;">count:</span> 0 <span style="color: #dcaeea;">]</span>
+  <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt; LAZYYY!!!! You clicked me {{ count }} times.&lt;/button&gt;|</span>))
+</pre>
+</div>
+
+
+<p>
+That actually works great, so it&rsquo;s time to make our run time that uses that technique.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org83d348d" class="outline-2">
+<h2 id="org83d348d"><span class="section-number-2">4</span> <code>gxjs-rt.ss</code>, it&rsquo;s time we broke (you) up as well.</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+We&rsquo;ll make <code>gxjs.js</code> from three different files: <code>gxjs-init.ss</code>, <code>gxjs-rt.ss</code>
+and <code>gxjs-ffi.ss</code>. The first will be minimal, basically just the inititalize
+functions. The second will have &ldquo;all&rdquo; (aka some) of the forms we need to
+bootstrap <b>Gerbil</b> in <code>js</code> (eventually). The third will have the FFI we need to
+develop <b>GxQuasar</b>.
+</p>
+
+<p>
+First things first, we want to avoid needing to <code>grep</code> and replace them in the
+build system. Things need to be KISS&rsquo;d.
+</p>
+
+<p>
+Since we already know how to re-initilize the module registry we&rsquo;ll make it do
+so when initiailzing.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_reset = <span style="color: #51afef;">function</span> () {
+  g_module_count = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_module_map = {};
+  g_module_table = <span style="color: #a9a1e1;">null</span>;
+  g_module_latest_registered = <span style="color: #a9a1e1;">null</span>;
+};
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_init = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">link_info</span>) {
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">n</span> = link_info.length;
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">i</span> = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_module_registry_reset();
+  g_module_table = <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">Array</span>(n);
+  <span style="color: #51afef;">while</span> (i &lt; n) {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = <span style="color: #a9a1e1;">null</span>;
+    ++i;
+  }
+};
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgca426d8" class="outline-3">
+<h3 id="orgca426d8"><span class="section-number-3">4.1</span> Minimal &ldquo;Hello&rdquo; attempt.</h3>
+<div class="outline-text-3" id="text-4-1">
+<p>
+Now we need to re-init the registry. We know from experience this can come from
+compilation.
+</p>
+
+<p>
+Back to a hello that does nothing.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">" exports.links = [{title: 'foo', link: 'https://google.ca'}];"</span>
+)
+
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>)
+</pre>
+</div>
+
+<p>
+Now a <code>js</code> file that just has that.
+</p>
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compile the base -l library gxjs-init.js"</span>
+
+_gxc gxjs-init.ss
+gsc  -target js -c -o gxjs-init.js static/gxjs-init.scm || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span>;
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"----------------"</span>; <span style="color: #ECBE7B;">echo</span>; <span style="color: #ECBE7B;">echo</span>;
+
+_gxc hello.ss
+<span style="color: #ECBE7B;">echo</span> Make a link file from our file to this runtime
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init static/hello.scm
+
+<span style="color: #ECBE7B;">echo</span> Steal the registry init
+<span style="color: #dcaeea;">_hello_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> Init for registry: $<span style="color: #dcaeea;">_hello_mod_init</span>;
+<span style="color: #ECBE7B;">rm</span> REMOVE-gxjs_.js
+
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">Compile a link file from our hello to the _gambit.js runtime.</span>
+gsc -target js -o gxjs-link.js -link static/hello.scm
+
+<span style="color: #ECBE7B;">echo</span> Append replace the module init with the other one for our runtime.
+
+sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_hello_mod_init/"</span> gxjs-link.js
+
+gsc -target js -o hello.js static/hello.scm
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js hello.js  &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+</pre>
+</div>
+
+<p>
+The <code>sed</code> gives us a simple init
+</p>
+<pre class="example">
+g_module_registry_init([new G_ModLinkInfo("gxjs-init",0),new G_ModLinkInfo("hello",1)]);
+</pre>
+
+
+
+<p>
+If we add that form to the declarations in the <code>gxjs-init.ss</code>, we can get rid of the <code>sed</code>! That means our new attempt is working.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org5be735d" class="outline-3">
+<h3 id="org5be735d"><span class="section-number-3">4.2</span> Small RT</h3>
+<div class="outline-text-3" id="text-4-2">
+<p>
+<a href="#gxjsbsrt"><code>gxjs-rt</code></a> is fairly small so lets add it to our hello. We&rsquo;ll use <code>##length</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">" exports.links = [{title: 'foo', link: 'https://google.ca'}];"</span>
+)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Hello ' + arg + ' ' + (@1@))</span>
+<span style="color: #98be65;">}"</span>
+ (<span style="color: #c678dd;">##</span>length <span style="color: #51afef;">'</span>(1 2 3)))
+</pre>
+</div>
+
+<p>
+Build it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compile the base -l library gxjs-init.js"</span>
+
+_gxc gxjs-init.ss
+gsc  -target js -c -o gxjs-init.js static/gxjs-init.scm || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span>;
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"----------------"</span>; <span style="color: #ECBE7B;">echo</span>; <span style="color: #ECBE7B;">echo</span>;
+
+_gxc hello.ss
+_gxc gxjs-rt.ss
+<span style="color: #ECBE7B;">echo</span> Make a link file from our file to this runtime
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init static/hello.scm static/gxjs-rt.scm
+
+<span style="color: #ECBE7B;">echo</span> Steal the registry init
+<span style="color: #dcaeea;">_hello_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> Init for registry: $<span style="color: #dcaeea;">_hello_mod_init</span>;
+<span style="color: #ECBE7B;">rm</span> REMOVE-gxjs_.js
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">Compile a link file from our hello to the _gambit.js runtime.</span>
+gsc -target js -o gxjs-link.js -link static/hello.scm
+
+<span style="color: #ECBE7B;">echo</span> Append replace the module init with the other one for our runtime.
+
+sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_hello_mod_init/"</span> gxjs-link.js
+
+gsc -target js -o hello.js static/hello.scm
+gsc -target js -o gxjs-rt.js static/gxjs-rt.scm
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js hello.js gxjs-rt.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org85a14e1" class="outline-3">
+<h3 id="org85a14e1"><span class="section-number-3">4.3</span> Small FFI</h3>
+<div class="outline-text-3" id="text-4-3">
+<p>
+With just a few namespace changes, back to our original hello.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">extern</span> <span style="color: #c678dd;">namespace:</span> <span style="color: #98be65;">"#"</span> list-&gt;vector)
+(<span style="color: #51afef;">extern</span> <span style="color: #c678dd;">namespace:</span> js plist-&gt;jso alert)
+(<span style="color: #51afef;">def</span> <span style="color: #c678dd;">linksData</span>
+  <span style="color: #51afef;">'</span>((<span style="color: #c678dd;">title:</span> <span style="color: #98be65;">"Gerbil Docs"</span> <span style="color: #c678dd;">caption:</span> <span style="color: #98be65;">"cons.io"</span> <span style="color: #c678dd;">icon:</span> <span style="color: #98be65;">"school"</span> <span style="color: #c678dd;">link:</span> <span style="color: #98be65;">"https://cons.io"</span>)
+    (<span style="color: #c678dd;">title:</span> <span style="color: #98be65;">"Quasar Docs"</span> <span style="color: #c678dd;">caption:</span> <span style="color: #98be65;">"quasar.dev"</span> <span style="color: #c678dd;">icon:</span> <span style="color: #98be65;">"school"</span> <span style="color: #c678dd;">link:</span> <span style="color: #98be65;">"https://quasar.dev"</span>)))
+
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">" exports.links = (@1@);</span>
+<span style="color: #98be65;">console.log('this is linksdata:', (@1@));</span>
+<span style="color: #98be65;">"</span>
+ (list-&gt;vector (<span style="color: #51afef;">map</span> plist-&gt;jso linksData)))
+
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Hello = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn('Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+ (<span style="color: #51afef;">lambda</span> (str) (alert str)))
+</pre>
+</div>
+
+<p>
+Now build the <a href="#gxjsffi"><code>gxjs-ffi</code></a> and include it.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compile the base -l library gxjs-init.js"</span>
+_comp gxjs-init.ss
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"----------------"</span>; <span style="color: #ECBE7B;">echo</span>; <span style="color: #ECBE7B;">echo</span>;
+_comp hello.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Make a link file from our file to this runtime"</span>
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #ECBE7B;">echo</span> Steal the registry init
+<span style="color: #dcaeea;">_hello_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> Init for registry: $<span style="color: #dcaeea;">_hello_mod_init</span>;
+<span style="color: #ECBE7B;">rm</span> REMOVE-gxjs_.js
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">Compile a link file from our statics to the _gambit.js runtime.</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #ECBE7B;">echo</span> Append replace the module init with the other one for our runtime.
+
+sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_hello_mod_init/"</span> gxjs-link.js
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js hello.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc138955" class="outline-3">
+<h3 id="orgc138955"><span class="section-number-3">4.4</span> Separate Lazy Hello</h3>
+<div class="outline-text-3" id="text-4-4">
+<p>
+At this point we have everything we want in one JS, and one thing that we don&rsquo;t
+want, the hello.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compile the base -l library gxjs-init.js"</span>
+_comp gxjs-init.ss
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"----------------"</span>; <span style="color: #ECBE7B;">echo</span>; <span style="color: #ECBE7B;">echo</span>;
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Make a link file from our file to this runtime"</span>
+gsc -target js -o REMOVE-gxjs_.js -link -l gxjs-init $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #ECBE7B;">echo</span> Steal the registry init
+<span style="color: #dcaeea;">_hello_mod_init</span>=<span style="color: #98be65;">"</span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">grep</span><span style="color: #51afef; font-weight: bold;"> -rE '^g_module_registry_init\(' REMOVE-gxjs_.js)</span><span style="color: #98be65;">"</span>
+
+<span style="color: #ECBE7B;">echo</span> Init for registry: $<span style="color: #dcaeea;">_hello_mod_init</span>;
+<span style="color: #ECBE7B;">rm</span> REMOVE-gxjs_.js
+
+<span style="color: #5B6268;"># </span><span style="color: #5B6268;">Compile a link file from our statics to the _gambit.js runtime.</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #ECBE7B;">echo</span> Append replace the module init with the other one for our runtime.
+
+<span style="color: #ECBE7B;">echo</span> not doing sed -i <span style="color: #98be65;">"s/^g_module_registry_init(.*/$_hello_mod_init/"</span> gxjs-link.js
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+
+<span style="color: #ECBE7B;">echo</span> Now a lazy hello
+_comp hello.ss
+
+<span style="color: #ECBE7B;">cp</span> hello.js gxjs.js button-counter.js ../public
+</pre>
+</div>
+
+<p>
+That gives us the <code>js</code> form we need. Notice we echo &ldquo;not doing sed&rdquo;
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_init([<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-init"</span>,<span style="color: #da8548; font-weight: bold;">0</span>),<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-rt"</span>,<span style="color: #da8548; font-weight: bold;">1</span>),<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-ffi"</span>,<span style="color: #da8548; font-weight: bold;">2</span>)]);
+</pre>
+</div>
+
+<p>
+Now that this form is included in our init we can build our <code>gxjs.js</code> and try it
+out WITHOUT THE <code>sed</code>!!
+</p>
+
+<p>
+Down at the very bottom of our link file is a module registry init.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_init([<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"_gambit"</span>,<span style="color: #da8548; font-weight: bold;">0</span>),<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-init"</span>,<span style="color: #da8548; font-weight: bold;">1</span>),<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-rt"</span>,<span style="color: #da8548; font-weight: bold;">2</span>),<span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ModLinkInfo</span>(<span style="color: #98be65;">"gxjs-ffi"</span>,<span style="color: #da8548; font-weight: bold;">3</span>)]);
+</pre>
+</div>
+
+<p>
+In the past we simply <code>sed</code>&rsquo;d it to our <code>js</code> form. But now we handle it
+automagically. Just a matter of building the &ldquo;modules&rdquo; and con-<code>cat</code>-enate the
+<code>js</code> files.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org56c6af8" class="outline-3">
+<h3 id="org56c6af8"><span class="section-number-3">4.5</span> <i>File</i> <code>gxjs-init.ss</code></h3>
+<div class="outline-text-3" id="text-4-5">
+<p>
+This is really simple. When this is first in line, the rest will follow it. We
+declare our <code>g_module_register</code> and siblings then our own
+<code>g_module_registry_init</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> <span style="color: #98be65;">"#"</span>
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">init-gambit-module</span> mod)
+  (<span style="color: #51afef;">let</span> ((init (<span style="color: #c678dd;">##</span>vector-ref mod 4)))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (<span style="color: #c678dd;">##</span>procedure? init)) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"alert('Cannot find init function in ' + g_module_name(@1@)); "</span> mod)
+        (init))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">init-gambit-program</span>)
+  (<span style="color: #51afef;">declare</span> (extended-bindings) (<span style="color: #51afef;">not</span> safe))
+   (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"// alert('init program time!'); console.log(g_glo['##program-descr'][0].map(g_module_name));"</span>)
+    (<span style="color: #51afef;">let</span> ((mods (<span style="color: #c678dd;">##</span>vector-ref <span style="color: #c678dd;">##</span>program-descr 0)))
+      (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((i 1)) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">start at module after the current one</span>
+        (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>fx&lt; i (<span style="color: #c678dd;">##</span>vector-length mods))
+            (<span style="color: #51afef;">let</span> ((mod (<span style="color: #c678dd;">##</span>vector-ref mods i)))
+              (init-gambit-module mod) <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">call module's init procedure</span>
+              (loop (<span style="color: #c678dd;">##</span>fx+ i 1)))))))
+
+(init-gambit-program)
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration
+ <span style="color: #c678dd;">#</span>&lt;&lt;HOSTDECL
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>reset = function () <span style="color: #dcaeea;">{</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map = <span style="color: #dcaeea;">{}</span><span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = null<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>latest<span style="color: #c678dd;">_</span>registered = null<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>init = function (link<span style="color: #c678dd;">_</span>info) <span style="color: #dcaeea;">{</span>
+  var n = link<span style="color: #c678dd;">_</span>info.length<span style="color: #5B6268;">;</span>
+  var i = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>reset()<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = new Array(n)<span style="color: #5B6268;">;</span>
+  while (i &lt; n) <span style="color: #dcaeea;">{</span>
+    var info = link<span style="color: #c678dd;">_</span>info<span style="color: #dcaeea;">[</span>i<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #dcaeea;">[</span>info.name<span style="color: #dcaeea;">]</span> = info<span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>i<span style="color: #dcaeea;">]</span> = null<span style="color: #5B6268;">;</span>
+    ++i<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>name = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+  var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+  return name<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init = function(module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>trampoline(module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = (typeof gx<span style="color: #c678dd;">_</span>old<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>register === <span style="color: #51afef;">'</span>undefined<span style="color: #51afef;">'</span>) <span style="color: #c678dd;">?</span> <span style="color: #dcaeea;">[]</span> : gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>register = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  // Keep track of all registered modules.
+  gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.push(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+
+  if ( typeof g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>program-descr<span style="color: #51afef;">'</span><span style="color: #dcaeea;">]</span> === <span style="color: #51afef;">'</span>object<span style="color: #51afef;">'</span> ) <span style="color: #dcaeea;">{</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span> else <span style="color: #dcaeea;">{</span>
+    var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+    var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+    var info = Object.prototype.hasOwnProperty.call(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #51afef;">,</span>name) <span style="color: #c678dd;">?</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #dcaeea;">[</span>name<span style="color: #dcaeea;">]</span> : null<span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>latest<span style="color: #c678dd;">_</span>registered = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+    if (<span style="color: #c678dd;">!</span>(info === null <span style="color: #98be65;">||</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length)) <span style="color: #dcaeea;">{</span>
+      var index = info.index<span style="color: #5B6268;">;</span>
+      var old = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+      g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span> = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+      if (old === null) <span style="color: #dcaeea;">{</span>
+        ++g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count<span style="color: #5B6268;">;</span>
+        if (g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length) <span style="color: #dcaeea;">{</span>
+          g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##program-descr"</span><span style="color: #dcaeea;">]</span> = <span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #51afef;">,</span>null<span style="color: #51afef;">,</span>false<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          temp = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length - 1<span style="color: #dcaeea;">][</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##vm-main-module-ref"</span><span style="color: #dcaeea;">]</span> = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>trampoline(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">][</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+        <span style="color: #dcaeea;">}</span>
+      <span style="color: #dcaeea;">}</span>
+    <span style="color: #dcaeea;">}</span>
+  <span style="color: #dcaeea;">}</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>init(<span style="color: #dcaeea;">[</span>new G<span style="color: #c678dd;">_</span>ModLinkInfo(<span style="color: #98be65;">"gxjs-init"</span><span style="color: #51afef;">,</span>0)<span style="color: #51afef;">,</span>new G<span style="color: #c678dd;">_</span>ModLinkInfo(<span style="color: #98be65;">"gxjs-rt"</span><span style="color: #51afef;">,</span>1)<span style="color: #51afef;">,</span>new G<span style="color: #c678dd;">_</span>ModLinkInfo(<span style="color: #98be65;">"gxjs-ffi"</span><span style="color: #51afef;">,</span>2)<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+
+HOSTDECL
+)
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-gxjsbsrt" class="outline-3">
+<h3 id="gxjsbsrt"><span class="section-number-3">4.6</span> <code>gxjs-rt</code>, now a minimal BS (bootstrap, not bovine feces) file.</h3>
+<div class="outline-text-3" id="text-gxjsbsrt">
+<p>
+These are all in <code>namespace: "#"</code> which actually means the defined symbols are
+prefixed by <code>##</code>.
+</p>
+</div>
+
+<div id="outline-container-orgc38a3cb" class="outline-4">
+<h4 id="orgc38a3cb"><span class="section-number-4">4.6.1</span> <code>error</code></h4>
+<div class="outline-text-4" id="text-4-6-1">
+<p>
+I have no idea what <b>Gambit</b> does for/with conditions and <code>js</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #51afef;">error</span> thing)
+  (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>string? thing)
+    (<span style="color: #51afef;">set!</span> thing (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_scm2host(@1@)"</span> thing)))
+  (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"_e = (@1@);</span>
+<span style="color: #98be65;">   if (_e instanceof Error) { throw _e } else { throw new Error(_e) };"</span> thing))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1099071" class="outline-4">
+<h4 id="org1099071"><span class="section-number-4">4.6.2</span> <code>length</code></h4>
+<div class="outline-text-4" id="text-4-6-2">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">length</span> lst)
+  (<span style="color: #51afef;">if</span> (null? lst) 0 (+ 1 (length (<span style="color: #c678dd;">##</span>cdr lst)))))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> <span style="color: #98be65;">"#"</span>
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org55004f3" class="outline-4">
+<h4 id="org55004f3"><span class="section-number-4">4.6.3</span> <code>list-&gt;vector</code></h4>
+<div class="outline-text-4" id="text-4-6-3">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">list-&gt;vector</span> lst)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">n</span> (<span style="color: #c678dd;">##</span>length lst))
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">vec</span> (<span style="color: #c678dd;">##</span>make-vector n))
+
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((i 0) (l lst))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (null? l))
+      (<span style="color: #51afef;">begin</span>
+        (<span style="color: #c678dd;">##</span>vector-set! vec i (<span style="color: #c678dd;">##</span>car l))
+        (loop (+ i 1) (<span style="color: #c678dd;">##</span>cdr l)))))
+  vec)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org79b7731" class="outline-4">
+<h4 id="org79b7731"><span class="section-number-4">4.6.4</span> <code>string-append</code></h4>
+<div class="outline-text-4" id="text-4-6-4">
+<p>
+I don&rsquo;t (yet) seem to have <code>##apply</code> at runtime (though may &#x2026; commented and
+not tried) so this is somewhat ineffecient and shorthand.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">string-append</span> . strs)
+  (<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">strapp</span> s1 s2)
+    (<span style="color: #51afef;">let*</span> ((l1 (<span style="color: #c678dd;">##</span>string-length s1))
+           (l2 (<span style="color: #c678dd;">##</span>string-length s2))
+           (l3 (+ l1 l2))
+           (s3 (<span style="color: #c678dd;">##</span>make-string l3)))
+      (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lp</span> ((n 0))
+        (<span style="color: #51afef;">if</span> (&lt; n l1)
+          (<span style="color: #c678dd;">##</span>string-set! s3 n (<span style="color: #c678dd;">##</span>string-ref s1 n))
+          (<span style="color: #51afef;">if</span> (&gt;= n l1)
+            (<span style="color: #c678dd;">##</span>string-set! s3 n (<span style="color: #c678dd;">##</span>string-ref s2 (- n l1)))))
+      (<span style="color: #51afef;">if</span> (&lt; n l3) (lp (+ 1 n))))
+                                        <span style="color: #5B6268;">;</span><span style="color: #5B6268;">(##apply string-append s3 rst)</span>
+      s3))
+
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">str</span> (car strs))
+
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">applp</span> ((lst (cdr strs)))
+    (<span style="color: #51afef;">if</span> (null? lst) str
+        (<span style="color: #51afef;">begin</span> (<span style="color: #51afef;">set!</span> str (strapp str (car lst)))
+               (applp (cdr lst))))))
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org24ba4db" class="outline-4">
+<h4 id="org24ba4db"><span class="section-number-4">4.6.5</span> <i>File</i> <code>gxjs-rt.ss</code></h4>
+<div class="outline-text-4" id="text-4-6-5">
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> <span style="color: #98be65;">"#"</span>
+(<span style="color: #51afef;">declare</span> (<span style="color: #51afef;">not</span> inline))
+
+<span style="color: #5B6268;">;; </span><span style="color: #5B6268;">(define (apply proc arg1 . rest)</span>
+<span style="color: #5B6268;">;;   </span><span style="color: #5B6268;">(if (##pair? rest)</span>
+
+<span style="color: #5B6268;">;;       </span><span style="color: #5B6268;">(let loop ((prev arg1) (lst rest))</span>
+<span style="color: #5B6268;">;;         </span><span style="color: #5B6268;">(let ((temp (##car lst)))</span>
+<span style="color: #5B6268;">;;           </span><span style="color: #5B6268;">(##set-car! lst prev)</span>
+<span style="color: #5B6268;">;;           </span><span style="color: #5B6268;">(let ((tail (##cdr lst)))</span>
+<span style="color: #5B6268;">;;             </span><span style="color: #5B6268;">(if (##pair? tail)</span>
+<span style="color: #5B6268;">;;                 </span><span style="color: #5B6268;">(loop temp tail)</span>
+<span style="color: #5B6268;">;;                 </span><span style="color: #5B6268;">(begin</span>
+<span style="color: #5B6268;">;;                   </span><span style="color: #5B6268;">(##set-cdr! lst temp)</span>
+<span style="color: #5B6268;">;;                   </span><span style="color: #5B6268;">(##apply proc rest))))))</span>
+
+<span style="color: #5B6268;">;;       </span><span style="color: #5B6268;">(##apply proc arg1)))</span>
+
+(<span style="color: #51afef;">def</span> (<span style="color: #51afef;">error</span> thing)
+  (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>string? thing)
+    (<span style="color: #51afef;">set!</span> thing (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_scm2host(@1@)"</span> thing)))
+  (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"_e = (@1@);</span>
+<span style="color: #98be65;">   if (_e instanceof Error) { throw _e } else { throw new Error(_e) };"</span> thing))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">length</span> lst)
+  (<span style="color: #51afef;">if</span> (null? lst) 0 (+ 1 (length (<span style="color: #c678dd;">##</span>cdr lst)))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">list-&gt;vector</span> lst)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">n</span> (<span style="color: #c678dd;">##</span>length lst))
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">vec</span> (<span style="color: #c678dd;">##</span>make-vector n))
+
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">loop</span> ((i 0) (l lst))
+    (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (null? l))
+      (<span style="color: #51afef;">begin</span>
+        (<span style="color: #c678dd;">##</span>vector-set! vec i (<span style="color: #c678dd;">##</span>car l))
+        (loop (+ i 1) (<span style="color: #c678dd;">##</span>cdr l)))))
+  vec)
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">string-append</span> . strs)
+  (<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">strapp</span> s1 s2)
+    (<span style="color: #51afef;">let*</span> ((l1 (<span style="color: #c678dd;">##</span>string-length s1))
+           (l2 (<span style="color: #c678dd;">##</span>string-length s2))
+           (l3 (+ l1 l2))
+           (s3 (<span style="color: #c678dd;">##</span>make-string l3)))
+      (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lp</span> ((n 0))
+        (<span style="color: #51afef;">if</span> (&lt; n l1)
+          (<span style="color: #c678dd;">##</span>string-set! s3 n (<span style="color: #c678dd;">##</span>string-ref s1 n))
+          (<span style="color: #51afef;">if</span> (&gt;= n l1)
+            (<span style="color: #c678dd;">##</span>string-set! s3 n (<span style="color: #c678dd;">##</span>string-ref s2 (- n l1)))))
+      (<span style="color: #51afef;">if</span> (&lt; n l3) (lp (+ 1 n))))
+                                        <span style="color: #5B6268;">;</span><span style="color: #5B6268;">(##apply string-append s3 rst)</span>
+      s3))
+
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">str</span> (car strs))
+
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">applp</span> ((lst (cdr strs)))
+    (<span style="color: #51afef;">if</span> (null? lst) str
+        (<span style="color: #51afef;">begin</span> (<span style="color: #51afef;">set!</span> str (strapp str (car lst)))
+               (applp (cdr lst))))))
+
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-gxjsffi" class="outline-3">
+<h3 id="gxjsffi"><span class="section-number-3">4.7</span> <code>gxjs-ffi</code></h3>
+<div class="outline-text-3" id="text-gxjsffi">
+<p>
+All of these will be placed in the <code>js#</code> namespace.
+</p>
+
+<p>
+<b>Gambit</b> has <code>foreign</code> types.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js-&gt;foreign</span> obj)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(@1@);"</span> obj))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">foreign-&gt;js</span> obj)
+  (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (<span style="color: #c678dd;">##</span>foreign? obj))
+    (<span style="color: #c678dd;">##</span>error <span style="color: #98be65;">"Not a foreign object"</span>))
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_foreign2host(@1@);"</span> obj))
+
+</pre>
+</div>
+<p>
+This is useful as well. Somewhat cribbed from <b>gambit-scm-2-js</b><sup><a id="fnr.4" class="footref" href="#fn.4">4</a></sup>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">scm-&gt;js</span> obj)
+  (<span style="color: #51afef;">begin</span>
+    (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"var result;"</span>)
+    (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"try {result = g_scm2host(@1@);} catch (e) {result = Error(e);}"</span> obj)
+    (<span style="color: #51afef;">let</span> ((result (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"result;"</span>)))
+      (<span style="color: #51afef;">if</span> (js-&gt;scm (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"@1@ instanceof Error;"</span> result))
+          (<span style="color: #c678dd;">##</span>error result)
+          result))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js-&gt;scm</span> obj)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(@1@);"</span> obj))
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">plist-&gt;jso</span> plist)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">jso</span> (<span style="color: #c678dd;">##</span>make-vector 0))
+  (<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">p-&gt;o</span> p)
+    (<span style="color: #51afef;">if</span> (null? p) jso
+        (<span style="color: #51afef;">begin</span> <span style="color: #5B6268;">; </span><span style="color: #5B6268;">(console.log p)</span>
+               (<span style="color: #51afef;">set!</span> jso (<span style="color: #c678dd;">##</span>vector-set!
+                          jso (<span style="color: #c678dd;">##</span>car p)
+                          (<span style="color: #51afef;">let</span> ((obj (<span style="color: #c678dd;">##</span>cadr p)))
+                            (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>foreign? obj)
+                              (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_foreign2host(@1@);"</span> obj)
+                             <span style="color: #5B6268;">; </span><span style="color: #5B6268;">(if (##procedure? obj) obj</span>
+                              (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_scm2host(@1@);"</span> obj)))))
+               (p-&gt;o (<span style="color: #c678dd;">##</span>cddr p)))))
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"Object.fromEntries(Object.entries(@1@));"</span> (p-&gt;o plist)))
+</pre>
+</div>
+</div>
+
+
+<div id="outline-container-org1c9fe92" class="outline-4">
+<h4 id="org1c9fe92"><span class="section-number-4">4.7.1</span> <i>File</i> <code>gxjs-ffi.ss</code></h4>
+<div class="outline-text-4" id="text-4-7-1">
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> js
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">alert</span> thing) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"var foo = (@1@);</span>
+<span style="color: #98be65;">  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)</span>
+<span style="color: #98be65;">  alert(bar);"</span> thing))
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">console.log</span> obj) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"console.log((@1@))"</span> obj))
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">console.error</span> obj) (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"console.error((@1@))"</span> obj))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js-&gt;foreign</span> obj)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(@1@);"</span> obj))
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">foreign-&gt;js</span> obj)
+  (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">not</span> (<span style="color: #c678dd;">##</span>foreign? obj))
+    (<span style="color: #c678dd;">##</span>error <span style="color: #98be65;">"Not a foreign object"</span>))
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_foreign2host(@1@);"</span> obj))
+
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">scm-&gt;js</span> obj)
+  (<span style="color: #51afef;">begin</span>
+    (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"var result;"</span>)
+    (<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"try {result = g_scm2host(@1@);} catch (e) {result = Error(e);}"</span> obj)
+    (<span style="color: #51afef;">let</span> ((result (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"result;"</span>)))
+      (<span style="color: #51afef;">if</span> (js-&gt;scm (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"@1@ instanceof Error;"</span> result))
+          (<span style="color: #c678dd;">##</span>error result)
+          result))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js-&gt;scm</span> obj)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(@1@);"</span> obj))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">plist-&gt;jso</span> plist)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">jso</span> (<span style="color: #c678dd;">##</span>make-vector 0))
+  (<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">p-&gt;o</span> p)
+    (<span style="color: #51afef;">if</span> (null? p) jso
+        (<span style="color: #51afef;">begin</span> <span style="color: #5B6268;">; </span><span style="color: #5B6268;">(console.log p)</span>
+               (<span style="color: #51afef;">set!</span> jso (<span style="color: #c678dd;">##</span>vector-set!
+                          jso (<span style="color: #c678dd;">##</span>car p)
+                          (<span style="color: #51afef;">let</span> ((obj (<span style="color: #c678dd;">##</span>cadr p)))
+                            (<span style="color: #51afef;">if</span> (<span style="color: #c678dd;">##</span>foreign? obj)
+                              (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_foreign2host(@1@);"</span> obj)
+                             <span style="color: #5B6268;">; </span><span style="color: #5B6268;">(if (##procedure? obj) obj</span>
+                              (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_scm2host(@1@);"</span> obj)))))
+               (p-&gt;o (<span style="color: #c678dd;">##</span>cddr p)))))
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"Object.fromEntries(Object.entries(@1@));"</span> (p-&gt;o plist)))
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6baee68" class="outline-2">
+<h2 id="org6baee68"><span class="section-number-2">5</span> Putting it all together</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+Now that we have almost everything lazy/dynamic, we want to get back to our
+original index.
+</p>
+
+<p>
+We&rsquo;ll have 3 steps.
+</p>
+
+<ol class="org-ol">
+<li><code>gxjs</code> :: Our basic run time</li>
+<li>All the lazy modules</li>
+<li>The gambit repl (done the old way)</li>
+</ol>
+
+<p>
+Our <code>_comp</code> shell function takes a <code>.ss</code>, makes a <code>static/.scm</code> and compiles that to a <code>.js</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org2552d88" class="outline-3">
+<h3 id="org2552d88"><span class="section-number-3">5.1</span> Build <code>gxjs</code></h3>
+<div class="outline-text-3" id="text-5-1">
+<div class="org-src-container">
+<pre class="src src-shell">_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+
+<span style="color: #ECBE7B;">cp</span> gxjs.js ../public/
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org111bce6" class="outline-3">
+<h3 id="org111bce6"><span class="section-number-3">5.2</span> Build the modules</h3>
+<div class="outline-text-3" id="text-5-2">
+<ol class="org-ol">
+<li>vue</li>
+<li>hello</li>
+<li>gambit-module-test</li>
+<li>button-counter</li>
+</ol>
+
+<div class="org-src-container">
+<pre class="src src-shell">_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+<span style="color: #ECBE7B;">cp</span> vue.js hello.js gambit-module-test.js button-counter.js ../public
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org673bfba" class="outline-4">
+<h4 id="org673bfba"><span class="section-number-4">5.2.1</span> <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</h4>
+<div class="outline-text-4" id="text-5-2-1">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Test = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn('Test' + arg)</span>
+<span style="color: #98be65;">}</span>
+
+<span style="color: #98be65;">console.log('init gambit-module-test');</span>
+
+<span style="color: #98be65;">"</span>
+ (<span style="color: #51afef;">lambda</span> (str)
+   (<span style="color: #51afef;">let*</span> ((mod (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_module_name(gx_gambit_module_table[1]);"</span>)))
+     (js<span style="color: #c678dd;">#</span>console.log mod)
+     (js<span style="color: #c678dd;">#</span>alert str))))
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3d14289" class="outline-3">
+<h3 id="org3d14289"><span class="section-number-3">5.3</span> Now the full gambit repl</h3>
+<div class="outline-text-3" id="text-5-3">
+<p>
+This time we try without the module reset/init.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">_comp lazy-gambit-repl.ss
+<span style="color: #dcaeea;">_lazy</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> lazy-gambit-repl.js </span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">gsc</span><span style="color: #51afef; font-weight: bold;"> -e '(display (path-expand "~~lib/_gambit.js")</span><span style="color: #98be65;">)')  &gt; gambit-repl.js"</span>
+<span style="color: #ECBE7B;">echo</span> Building the gambit repl: <span style="color: #98be65;">\"</span>$<span style="color: #dcaeea;">_lazy</span><span style="color: #98be65;">\"</span>; bash -c <span style="color: #98be65;">"$_lazy"</span>;
+<span style="color: #ECBE7B;">cp</span> gambit-repl.js ../public
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:gerbil/gambit</span>)
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.evalElement = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Lazy? This is working without the reset Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+)
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">document.getElementById</span> id)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(document.getElementById(g_scm2host(@1@)))"</span> id))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">Element.innerText-ref</span> elem)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(g_foreign2host(@1@).innerText)"</span> elem))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">g-sourceCodeRun</span> id)
+  (<span style="color: #51afef;">let*</span> ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (<span style="color: #51afef;">let</span> ((expr (cons <span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>begin (with-input-from-string code read-all))))
+      (<span style="color: #51afef;">eval</span> expr))
+
+    ))
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"g_sourceCodeRun = function () { alert('sourceCodeRun'); };"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"</span>
+<span style="color: #98be65;">g_sourceCodeRun = g_scm2host(@1@);</span>
+<span style="color: #98be65;">exports.sourceCodeRun = g_sourceCodeRun;"</span> g-sourceCodeRun)
+
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org0754ef4" class="outline-2">
+<h2 id="org0754ef4"><span class="section-number-2">6</span> Boot File</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+Everything that lazy-loads relies on the <code>gxjs.js</code> runtime. <b>Quasar</b> has a <code>/boot</code> folder which runs things before it runs things as it were.
+</p>
+
+<p>
+<a href="https://quasar.dev/quasar-cli/boot-files">https://quasar.dev/quasar-cli/boot-files</a> is a good resource.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">import</span> <span style="color: #98be65;">'app/public/gxjs.js'</span>
+<span style="color: #51afef;">export</span> <span style="color: #51afef;">default</span> ({ app, router, store, Vue }) =&gt; {
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">something to do</span>
+}
+</pre>
+</div>
+
+<p>
+This must be added to <code>quasar.conf.js</code>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">boot: [
+  <span style="color: #98be65;">'axios'</span>,
+  <span style="color: #98be65;">'gxjs'</span>
+],
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2ecae73" class="outline-2">
+<h2 id="org2ecae73"><span class="section-number-2">7</span> <code>LogIndex.vue</code>, a logs component</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+Eventually this will become a lot of our code as exporting the logs to json and then <b>Vue</b>&rsquo;ing them is a wonderful task to grow code in.
+</p>
+
+<p>
+For now :
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+      &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"q-pa-md"</span>&gt;
+        Here is the &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"log/index.html"</span> <span style="color: #dcaeea;">target</span>=<span style="color: #98be65;">"log_iframe"</span>&gt; index &lt;/<span style="color: #c678dd;">a</span>&gt; of the ongoing saga that is &lt;<span style="color: #c678dd;">strong</span>&gt;<span style="font-weight: bold;">gxQuasar</span>&lt;/<span style="color: #c678dd;">strong</span>&gt;
+    &lt;<span style="color: #c678dd;">q-layout</span> <span style="color: #dcaeea;">view</span>=<span style="color: #98be65;">"lHh Lpr lFf"</span> container <span style="color: #dcaeea;">style</span>=<span style="color: #98be65;">"height: 60vh"</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"shadow-2 rounded-borders"</span>&gt;
+      &lt;<span style="color: #c678dd;">q-page-container</span>&gt;
+        &lt;<span style="color: #c678dd;">q-page</span> padding&gt;
+          &lt;<span style="color: #c678dd;">iframe</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"resp-iframe"</span>
+                  <span style="color: #dcaeea;">src</span>=<span style="color: #98be65;">"log/index.html"</span>
+                  <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"log_iframe"</span>
+                  <span style="color: #dcaeea;">height</span>=<span style="color: #98be65;">"50000"</span>
+                  allowfullscreen&gt; &lt;/<span style="color: #c678dd;">iframe</span>&gt;
+        &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+      &lt;/<span style="color: #c678dd;">q-page-container</span>&gt;
+    &lt;/<span style="color: #c678dd;">q-layout</span>&gt;
+  &lt;/<span style="color: #c678dd;">div</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">style</span>&gt;
+  .resp-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+&lt;/<span style="color: #c678dd;">style</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+export default {
+  name: 'LogIndex'
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org8134045" class="outline-2">
+<h2 id="org8134045"><span class="section-number-2">8</span> <code>Index.vue</code></h2>
+<div class="outline-text-2" id="text-8">
+<p>
+Going to add the log files as html in order to have something useful to look at
+live.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span>&gt;
+    &lt;<span style="color: #c678dd;">div</span>&gt;
+      &lt;<span style="color: #c678dd;">q-splitter</span>
+        <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"splitterModel"</span>
+        &gt;
+
+        &lt;<span style="color: #c678dd;">template</span> v-slot:before&gt;
+        &lt;<span style="color: #c678dd;">q-tabs</span>
+          <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"tab"</span> no-caps
+          vertical
+          <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-teal"</span>
+        &gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"index"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"loyalty"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"GerbilJS"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"repl"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"keyboard"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"REPL"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"weblog"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"format_list_numbered"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"Log Files"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"tests"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"verified"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"Tests"</span> /&gt;
+        &lt;/<span style="color: #c678dd;">q-tabs</span>&gt;
+      &lt;/<span style="color: #c678dd;">template</span>&gt;
+
+      &lt;<span style="color: #c678dd;">template</span> v-slot:after&gt;
+        &lt;<span style="color: #c678dd;">q-tab-panels</span>
+          <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"tab"</span>
+          animated
+          swipeable
+          vertical
+          <span style="color: #dcaeea;">transition-prev</span>=<span style="color: #98be65;">"jump-up"</span>
+          <span style="color: #dcaeea;">transition-next</span>=<span style="color: #98be65;">"jump-up"</span>
+        &gt;
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"index"</span>&gt;
+            &lt;<span style="color: #c678dd;">span</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4"</span>&gt;GxQuasar&lt;/<span style="color: #c678dd;">span</span>&gt;
+            &lt;<span style="color: #c678dd;">span</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">'text-subtitle2'</span>&gt;An overview of Gerbil Scheme in JavaScript&lt;/<span style="color: #c678dd;">span</span>&gt;
+            &lt;<span style="color: #c678dd;">hr</span>&gt;
+            &lt;<span style="color: #c678dd;">p</span>&gt; Developing Web Applications takes knowledge of a lot of
+            languages.&lt;/<span style="color: #c678dd;">p</span>&gt;
+            &lt;<span style="color: #c678dd;">p</span>&gt;Centralizing on a lisp dialect, in
+            particular &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://cons.io"</span>&gt;&lt;<span style="color: #c678dd;">b</span>&gt;<span style="font-weight: bold;">Gerbil</span>&lt;/<span style="color: #c678dd;">b</span>&gt;: a meta-dialect
+            of Scheme&lt;/<span style="color: #c678dd;">a</span>&gt;, makes things a lot easier. &lt;/<span style="color: #c678dd;">p</span>&gt;
+
+            &lt;<span style="color: #c678dd;">p</span>&gt;To have a look at the code, see the &lt;<span style="color: #c678dd;">code</span>&gt;./gx/&lt;/<span style="color: #c678dd;">code</span>&gt; directory in &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://github.com/drewc/gx-quasar"</span>&gt;the github repo. &lt;/<span style="color: #c678dd;">a</span>&gt; &lt;/<span style="color: #c678dd;">p</span>&gt;
+
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"repl"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;ReadEvalPrint(actually alert, then wait, before)Loop&lt;/<span style="color: #c678dd;">div</span>&gt;
+
+            This is currently just a &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"http://gambitscheme.org/"</span>&gt;Gambit
+            Scheme&lt;/<span style="color: #c678dd;">a</span>&gt; REPL. Gambit is the language that Gerbil
+            currently &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://en.wikipedia.org/wiki/Source-to-source_compiler"</span>&gt;transpiles&lt;/<span style="color: #c678dd;">a</span>&gt;
+            to which itself can transpile to JavaScript.
+
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"full-width"</span> <span style="color: #dcaeea;">contenteditable</span>=<span style="color: #98be65;">"true"</span> <span style="color: #dcaeea;">id</span>=<span style="color: #98be65;">"gx_repl"</span> <span style="color: #dcaeea;">style</span>=<span style="color: #98be65;">"max-width: 300px; height: 25vh; border: 2px solid black;"</span>&gt;
+              (list "123" 456 #(7 8 9))
+            &lt;/<span style="color: #c678dd;">div</span>&gt;
+
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"sourceCodeRun('gx_repl')"</span>&gt; Repl &lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+            &lt;<span style="color: #c678dd;">hr</span>&gt;
+
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"weblog"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;Log Files&lt;/<span style="color: #c678dd;">div</span>&gt;
+            &lt;<span style="color: #c678dd;">log-index</span>&gt;&lt;/<span style="color: #c678dd;">log-index</span>&gt;
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"tests"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;Tests&lt;/<span style="color: #c678dd;">div</span>&gt;
+            This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
+            &lt;<span style="color: #c678dd;">js-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">js-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">button-counter</span>&gt;&lt;/<span style="color: #c678dd;">button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">lazy-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">lazy-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('WOrld! Tahgle!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Test('WOrld! Tahgle!')"</span>&gt; Test function&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+        &lt;/<span style="color: #c678dd;">q-tab-panels</span>&gt;
+      &lt;/<span style="color: #c678dd;">template</span>&gt;
+
+    &lt;/<span style="color: #c678dd;">q-splitter</span>&gt;
+  &lt;/<span style="color: #c678dd;">div</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+import { Hello } from 'app/public/hello.js'
+import { ButtonCounter } from 'app/public/vue.js'
+import { lazyButtonCounter } from 'app/public/button-counter.js'
+import { Test } from 'app/public/gambit-module-test.js'
+import { Loading } from 'quasar'
+import LogIndex from 'components/LogIndex.vue'
+
+import jsButtonCounter from 'app/public/test-js-component.js'
+
+export default {
+  name: 'PageIndex',
+  // components: { jsButtonCounter },
+  // components: { lazyButtonCounter, jsButtonCounter },
+  components: { ButtonCounter, jsButtonCounter, lazyButtonCounter, LogIndex },
+  data () {
+    return {
+      tab: 'index',
+      splitterModel: 20
+    }
+  },
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      // console.log(ButtonCounter)
+      // console.log(lazyButtonCounter)
+
+      window.btn = ButtonCounter
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var scRun = false;
+      // return scRun
+      (async () =&gt; {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun, evalElement } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          evalElement('yay!!')
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=&gt; ' + val)
+      })()
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orga22c67e" class="outline-2">
+<h2 id="orga22c67e"><span class="section-number-2">9</span> <code>MainLayout.vue</code>: Hello links please!</h2>
+<div class="outline-text-2" id="text-9">
+<p>
+The links are now in <code>hello.js</code>
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-layout</span> <span style="color: #dcaeea;">view</span>=<span style="color: #98be65;">"lHh Lpr lFf"</span>&gt;
+    &lt;<span style="color: #c678dd;">q-header</span> elevated&gt;
+      &lt;<span style="color: #c678dd;">q-toolbar</span>
+          <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"bg-teal"</span>
+
+        &gt;
+        &lt;<span style="color: #c678dd;">q-btn</span>
+          flat
+          dense
+          round
+          <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"menu"</span>
+          <span style="color: #dcaeea;">aria-label</span>=<span style="color: #98be65;">"Menu"</span>
+          @click=<span style="color: #98be65;">"leftDrawerOpen = !leftDrawerOpen"</span>
+        /&gt;
+
+        &lt;<span style="color: #c678dd;">q-toolbar-title</span>&gt;
+          gxQuasar: Gerbil and Quasar
+        &lt;/<span style="color: #c678dd;">q-toolbar-title</span>&gt;
+
+        &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-subtitle2"</span>&gt;{{ gxVersion }} on Quasar v{{ $q.version }}&lt;/<span style="color: #c678dd;">div</span>&gt;
+      &lt;/<span style="color: #c678dd;">q-toolbar</span>&gt;
+    &lt;/<span style="color: #c678dd;">q-header</span>&gt;
+
+    &lt;<span style="color: #c678dd;">q-drawer</span>
+      <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"leftDrawerOpen"</span>
+      show-if-above
+      bordered
+      <span style="color: #dcaeea;">content-class</span>=<span style="color: #98be65;">"bg-grey-1"</span>
+    &gt;
+      &lt;<span style="color: #c678dd;">q-list</span>&gt;
+        &lt;<span style="color: #c678dd;">q-item-label</span>
+          header
+          <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-grey-8"</span>
+        &gt;
+          Essential Links
+        &lt;/<span style="color: #c678dd;">q-item-label</span>&gt;
+        &lt;<span style="color: #c678dd;">EssentialLink</span>
+          <span style="color: #dcaeea;">v-for</span>=<span style="color: #98be65;">"link in essentialLinks"</span>
+          :key=<span style="color: #98be65;">"link.title"</span>
+          <span style="color: #dcaeea;">v-bind</span>=<span style="color: #98be65;">"link"</span>
+        /&gt;
+      &lt;/<span style="color: #c678dd;">q-list</span>&gt;
+    &lt;/<span style="color: #c678dd;">q-drawer</span>&gt;
+
+    &lt;<span style="color: #c678dd;">q-page-container</span>&gt;
+      &lt;<span style="color: #c678dd;">router-view</span> /&gt;
+    &lt;/<span style="color: #c678dd;">q-page-container</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-layout</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+import EssentialLink from 'components/EssentialLink.vue'
+import { links } from 'app/public/hello.js'
+import gxVersion from 'app/public/gerbil-system-version.js'
+const linksData = links
+
+export default {
+  name: 'MainLayout',
+  components: { EssentialLink },
+  data () {
+    return {
+      leftDrawerOpen: false,
+      essentialLinks: linksData,
+      gxVersion: gxVersion
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge4eb921" class="outline-2">
+<h2 id="orge4eb921"><span class="section-number-2">10</span> <code>build.sh</code>: A simple build script</h2>
+<div class="outline-text-2" id="text-10">
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">_dir</span>=<span style="color: #51afef; font-weight: bold;">$</span><span style="color: #51afef; font-weight: bold;">(</span><span style="color: #51afef; font-weight: bold;">cd -P -- </span><span style="color: #51afef; font-weight: bold;">"$(</span><span style="color: #51afef; font-weight: bold;">dirname</span><span style="color: #51afef; font-weight: bold;"> -- "</span><span style="color: #51afef; font-weight: bold;">$</span><span style="color: #51afef; font-weight: bold;">0</span><span style="color: #51afef; font-weight: bold;">")</span><span style="color: #98be65;">"</span> &amp;&amp; <span style="color: #ECBE7B;">pwd</span> -P<span style="color: #51afef;">)</span>
+<span style="color: #ECBE7B;">echo</span> dir: $<span style="color: #dcaeea;">_dir</span>;
+<span style="color: #dcaeea;">_cd</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cd</span><span style="color: #98be65;"> $_dir/gx"</span>; <span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_cd</span> ; $<span style="color: #dcaeea;">_cd</span>;
+
+<span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+
+<span style="color: #ECBE7B;">cp</span> gxjs.js ../public/
+
+_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+<span style="color: #ECBE7B;">cp</span> vue.js hello.js gambit-module-test.js button-counter.js ../public
+
+_comp lazy-gambit-repl.ss
+<span style="color: #dcaeea;">_lazy</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> lazy-gambit-repl.js </span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">gsc</span><span style="color: #51afef; font-weight: bold;"> -e '(display (path-expand "~~lib/_gambit.js")</span><span style="color: #98be65;">)')  &gt; gambit-repl.js"</span>
+<span style="color: #ECBE7B;">echo</span> Building the gambit repl: <span style="color: #98be65;">\"</span>$<span style="color: #dcaeea;">_lazy</span><span style="color: #98be65;">\"</span>; bash -c <span style="color: #98be65;">"$_lazy"</span>;
+<span style="color: #ECBE7B;">cp</span> gambit-repl.js ../public
+
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org31b4625" class="outline-2">
+<h2 id="org31b4625"><span class="section-number-2">11</span> Commit, build, commit, deploy</h2>
+<div class="outline-text-2" id="text-11">
+<p>
+First we actually commit this log and what it needs.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">LD</span>=$<span style="color: #dcaeea;">CC</span> quasar build
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #ECBE7B;">git</span> stash
+<span style="color: #ECBE7B;">git</span> checkout gh-pages
+<span style="color: #ECBE7B;">git</span> <span style="color: #ECBE7B;">rm</span> -rf .
+rsync -av dist/spa/ .
+<span style="color: #ECBE7B;">git</span> add css/ fonts/ js/ index.html
+<span style="color: #ECBE7B;">git</span> commit -m <span style="color: #98be65;">"Update gh-pages for log 0002"</span>
+<span style="color: #ECBE7B;">git</span> push origin gh-pages
+<span style="color: #ECBE7B;">git</span> checkout main
+<span style="color: #ECBE7B;">git</span> stash pop
+</pre>
+</div>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://vuejs.org/v2/guide/components.html">https://vuejs.org/v2/guide/components.html</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.2" class="footnum" href="#fnr.2">2</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://vuejs.org/v2/guide/components-registration.html#Local-Registration">https://vuejs.org/v2/guide/components-registration.html#Local-Registration</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.3" class="footnum" href="#fnr.3">3</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://vuejs.org/v2/guide/components-registration.html#Name-Casing">https://vuejs.org/v2/guide/components-registration.html#Name-Casing</a>
+</p></div></div>
+
+<div class="footdef"><sup><a id="fn.4" class="footnum" href="#fnr.4">4</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://github.com/roropincho/scm2js">https://github.com/roropincho/scm2js</a>
+</p></div></div>
+
+
+</div>
+</div></div>
+<div id="postamble" class="status">
+<p class="author">Author: Drew Crampsie</p>
+<p class="date">Created: 2020-11-25 Wed 11:50</p>
+</div>
+</body>
+</html>
