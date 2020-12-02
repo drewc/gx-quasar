@@ -11,6 +11,7 @@ _statics=""
 
 _gsc () {
  _js=$(basename $1 .scm).js
+ _js=`echo $_js | sed 's/js__\(.*\)/\1/'`
  _statics="$_statics $1"
 
   echo "--- compiling $1 to $_js"
@@ -19,12 +20,37 @@ _gsc () {
 
 _comp () {
  _fn=$(basename $1 .ss)
- _st=static/$_fn.scm
+ _st=static/js__$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _js=`echo $_js | sed 's/js__\(.*\)/\1/'`
+ _statics="$_statics $1"
+
+  echo "--- compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/js__$_fn.scm
 
  _gxc $1;
  _gsc $_st;
  }
 
+gxc -v syntax.ss
+_comp gxjs-fixes.ss
+_comp syntax.ss
 _comp gxjs-init.ss
 _comp gxjs-rt.ss
 _comp gxjs-ffi.ss
@@ -32,7 +58,7 @@ _comp gxjs-ffi.ss
 echo "Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."
 gsc -target js -o gxjs-link.js -link $_statics
 
-_gxjs_rt='cat gxjs-link.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+_gxjs_rt='cat gxjs-link.js gxjs-fixes.js syntax.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
 
 cp gxjs.js ../public/
 

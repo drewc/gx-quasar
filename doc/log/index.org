@@ -27,6 +27,20 @@ to figure out *Gambit*'s module registry in *JavaScript*.
 
     Also of interest is the first *Vue.js* component created [[file:0002_Lazy-Dynamic-Module-Init.org::#FirstVueGx][entirely in gerbil]].
 
+ 3) [[file:0003_More-run-time-and-more-vue.org][More Run Time, More Vue]].
+
+    I futz with ~g_scm2host~ and ~g_host2scm~ to make them "work" with foreign
+    objects. Now an alist can become a *JavaScript* object, but not /vice
+    versa/.
+
+    Using that enables a trivial [[file:0003_More-run-time-and-more-vue.org::#jsFunctionAndThis][~js#function~]], which allows a lexical ~js#this~
+    variable as well as a variable number of arguments totally unspecified, like ~js~.
+
+    Needing a way to both create and reference our foreign ~jso~'s, we do so.
+    [[file:0003_More-run-time-and-more-vue.org::#jsJsoRefAndRefSet][~js#jso~ and ~js#ref~]]
+
+    Using that and a wee bit more we are able to port a *Vue* component's render
+    function over to scheme in a near identical manner.
 
 * Notes
 

@@ -89,8 +89,8 @@ module.exports = function (/* ctx */) {
 
       config: {
         loading: {
-          delay: 300,
-          message: 'Loading API...'
+          delay: 100,
+          message: 'Loading Gerbil/Gambit...'
         }
       },
 

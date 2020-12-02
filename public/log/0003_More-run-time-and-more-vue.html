@@ -1,0 +1,1533 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2020-12-02 Wed 08:59 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>More Run Time, More Vue</title>
+<meta name="generator" content="Org mode" />
+<meta name="author" content="Drew Crampsie" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&amp;dn=gpl-3.0.txt GPL-v3-or-Later
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.cacheClassElem = elem.className;
+         elem.cacheClassTarget = target.className;
+         target.className = "code-highlighted";
+         elem.className   = "code-highlighted";
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(elem.cacheClassElem)
+         elem.className = elem.cacheClassElem;
+       if(elem.cacheClassTarget)
+         target.className = elem.cacheClassTarget;
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">More Run Time, More Vue</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#orgd77d1a9">1. Our own <code>g_module_register</code></a></li>
+<li><a href="#orgc373832">2. <code>G_Foreign</code> in <code>g_scm2host</code> and <code>g_host2scm</code></a></li>
+<li><a href="#org3ec6e2c">3. <code>gxjs-fixes.ss</code></a></li>
+<li><a href="#org1d1b6c3">4. Change the boot file into aync loading</a></li>
+<li><a href="#jsJsoRefAndRefSet">5. <code>js#jso</code> and <code>js#ref</code></a>
+<ul>
+<li><a href="#org3bb17fa">5.1. <code>js#ref</code> and <code>js#ref-set!</code></a></li>
+</ul>
+</li>
+<li><a href="#jsFunctionAndThis">6. <code>js#function</code>, Our first syntax.</a></li>
+<li><a href="#org0240bdf">7. <code>##number-&gt;string~</code>, a needed prim.</a></li>
+<li><a href="#orgf48a77c">8. <code>js#++</code>, really just to make it short.</a></li>
+<li><a href="#orge4b107a">9. <b>Vue.js</b> Render Functions and Gerbil</a>
+<ul>
+<li><a href="#org0bb7a5c">9.1. <i>File</i> <code>button-counter.ss</code></a></li>
+</ul>
+</li>
+<li><a href="#org0339586">10. Putting it all together</a>
+<ul>
+<li><a href="#orge334dd2">10.1. Build <code>gxjs</code></a></li>
+<li><a href="#orgf7e4e56">10.2. Build the modules</a>
+<ul>
+<li><a href="#org4799b73">10.2.1. <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</a></li>
+</ul>
+</li>
+<li><a href="#org3a59007">10.3. Now the full gambit repl</a></li>
+</ul>
+</li>
+<li><a href="#org1e111a7">11. <code>Index.vue</code></a></li>
+<li><a href="#org3f6651a">12. <code>build.sh</code>: A simple build script</a></li>
+</ul>
+</div>
+</div>
+<p>
+One of the things I require is <b>Vue.js</b> components written in <b>Gerbil</b> Scheme
+and integrated with <b>Quasar</b>.
+</p>
+
+<p>
+In the past I&rsquo;ve written a <code>vue#component</code> based on my own (previous)
+<code>js#plist-&gt;jso</code>. In this log I discovered exactly why I needed that and was able
+to rid myself of that need!.
+</p>
+
+
+
+<div id="outline-container-orgd77d1a9" class="outline-2">
+<h2 id="orgd77d1a9"><span class="section-number-2">1</span> Our own <code>g_module_register</code></h2>
+<div class="outline-text-2" id="text-1">
+<p>
+To lazy load our <code>js</code> <b>Gambit</b> modules the <code>g_module_register</code> function has been
+slightly re-written. We know from experience that function is defined at the
+start of an <code>-exe</code> or in the <code>-link</code> file so if this is added after that and
+before the rest, there you go.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_name = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">module_descr</span>) {
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">temp</span> = module_descr[<span style="color: #da8548; font-weight: bold;">0</span>];
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">name</span> = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>].name;
+  <span style="color: #51afef;">return</span> name;
+};
+
+g_module_init = <span style="color: #51afef;">function</span>(<span style="color: #dcaeea;">module_descr</span>) {
+  g_sp = -<span style="color: #da8548; font-weight: bold;">1</span>;
+  g_stack[++g_sp] = <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_r0 = g_underflow;
+  g_nargs = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_trampoline(module_descr[<span style="color: #da8548; font-weight: bold;">4</span>]);
+};
+
+gx_gambit_module_table = [];
+
+g_module_register = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">module_descr</span>) {
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">Keep track of all registered modules.</span>
+  gx_gambit_module_table.push(module_descr);
+
+  <span style="color: #51afef;">if</span> ( <span style="color: #51afef;">typeof</span> g_glo[<span style="color: #98be65;">'##program-descr'</span>] === <span style="color: #98be65;">'object'</span> ) {
+    g_module_init(module_descr);
+  } <span style="color: #51afef;">else</span> {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">temp</span> = module_descr[<span style="color: #da8548; font-weight: bold;">0</span>];
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">name</span> = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>].name;
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = Object.<span style="color: #a9a1e1;">prototype</span>.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : <span style="color: #a9a1e1;">null</span>;
+    g_module_latest_registered = module_descr;
+    <span style="color: #51afef;">if</span> (!(info === <span style="color: #a9a1e1;">null</span> || g_module_count === g_module_table.length)) {
+      <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">index</span> = info.index;
+      <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">old</span> = g_module_table[index];
+      g_module_table[index] = module_descr;
+      <span style="color: #51afef;">if</span> (old === <span style="color: #a9a1e1;">null</span>) {
+        ++g_module_count;
+        <span style="color: #51afef;">if</span> (g_module_count === g_module_table.length) {
+          g_glo[<span style="color: #98be65;">"##program-descr"</span>] = [g_module_table,<span style="color: #a9a1e1;">null</span>,<span style="color: #a9a1e1;">false</span>];
+          temp = g_module_table[g_module_table.length - <span style="color: #da8548; font-weight: bold;">1</span>][<span style="color: #da8548; font-weight: bold;">0</span>];
+          g_glo[<span style="color: #98be65;">"##vm-main-module-ref"</span>] = temp[temp.length - <span style="color: #da8548; font-weight: bold;">1</span>];
+          g_sp = -<span style="color: #da8548; font-weight: bold;">1</span>;
+          g_stack[++g_sp] = <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+          g_r0 = g_underflow;
+          g_nargs = <span style="color: #da8548; font-weight: bold;">0</span>;
+          g_trampoline(g_module_table[<span style="color: #da8548; font-weight: bold;">0</span>][<span style="color: #da8548; font-weight: bold;">4</span>]);
+        }
+      }
+    }
+  }
+};
+
+</pre>
+</div>
+
+<p>
+We also have a way to reset the module registry. We don&rsquo;t actually use it now (I don&rsquo;t think), but it comes in handy.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_reset = <span style="color: #51afef;">function</span> () {
+  g_module_count = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_module_map = {};
+  g_module_table = <span style="color: #a9a1e1;">null</span>;
+  g_module_latest_registered = <span style="color: #a9a1e1;">null</span>;
+};
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_module_registry_init = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">link_info</span>) {
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">n</span> = link_info.length;
+  <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">i</span> = <span style="color: #da8548; font-weight: bold;">0</span>;
+  g_module_registry_reset();
+  g_module_table = <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">Array</span>(n);
+  <span style="color: #51afef;">while</span> (i &lt; n) {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">info</span> = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = <span style="color: #a9a1e1;">null</span>;
+    ++i;
+  }
+};
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgc373832" class="outline-2">
+<h2 id="orgc373832"><span class="section-number-2">2</span> <code>G_Foreign</code> in <code>g_scm2host</code> and <code>g_host2scm</code></h2>
+<div class="outline-text-2" id="text-2">
+<p>
+For some reason the upstream <code>g_scm2host</code> does not accept foreign types.
+</p>
+
+
+<p>
+In other (code) words :
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">bar = g_host2foreign(window);
+baz = g_scm2host(bar);
+<span style="color: #5B6268;">// </span><span style="color: #5B6268;">Uncaught scm2host error</span>
+</pre>
+</div>
+
+<p>
+Also, <code>g_host2scm</code> goes through the object and attempts to make an <code>alist</code> out
+of it. Unfortunatly, since a lot of objects recursively contain themselves, this
+fails a lot as well.
+</p>
+
+<p>
+Don&rsquo;t try this without the fixes. I&rsquo;ve gotten &ldquo;Paused before potenial out of
+memory crash&rdquo; at the <code>js</code> <b>REPL</b> and stack blows for different attempts.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">bat = g_host2scm(window);
+</pre>
+</div>
+
+
+<p>
+We&rsquo;ll &ldquo;fix&rdquo; those and see how it goes.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">g_scm2host = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">obj</span>) {
+  <span style="color: #51afef;">if</span> (obj === <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>) {
+    <span style="color: #51afef;">return</span> obj;
+  }
+  <span style="color: #51afef;">if</span> (obj === <span style="color: #a9a1e1;">null</span>) {
+    <span style="color: #51afef;">return</span> obj;
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"boolean"</span>) {
+    <span style="color: #51afef;">return</span> obj;
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"number"</span>) {
+    <span style="color: #51afef;">return</span> obj;
+  }
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">this is what we add</span>
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Foreign</span>) {
+    <span style="color: #51afef;">return</span> g_foreign2host(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Flonum</span>) {
+    <span style="color: #51afef;">return</span> obj.val;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_ScmString</span>) {
+    <span style="color: #51afef;">return</span> obj.toString();
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Array</span>) {
+    <span style="color: #51afef;">return</span> obj.map( g_scm2host );
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_U8Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_U16Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_U32Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_S8Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_S16Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_S32Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_F32Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_F64Vector</span>) {
+    <span style="color: #51afef;">return</span> obj.elems;
+  }<span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Pair</span>) {
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">jsobj</span> = {};
+    <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">i</span> = <span style="color: #da8548; font-weight: bold;">0</span>;
+    <span style="color: #51afef;">while</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Pair</span>) {
+      <span style="color: #51afef;">var</span> <span style="color: #dcaeea;">elem</span> = obj.car;
+      <span style="color: #51afef;">if</span> (elem <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Pair</span>) {
+        jsobj[g_scm2host(elem.car)] = g_scm2host(elem.cdr);
+      } <span style="color: #51afef;">else</span> {
+        jsobj[i] = g_scm2host(elem);
+      }
+      ++i;
+      obj = obj.cdr;
+    }
+    <span style="color: #51afef;">return</span> jsobj;
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">G_Structure</span>) {
+    <span style="color: #51afef;">throw</span> <span style="color: #98be65;">"scm2host error (cannot convert Structure)"</span>;
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"function"</span>) {
+    <span style="color: #51afef;">return</span> g_procedure2host(obj);
+  }
+  <span style="color: #51afef;">throw</span> <span style="color: #98be65;">"scm2host error"</span>;
+};
+
+
+g_host2scm = <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">obj</span>) {
+  <span style="color: #51afef;">if</span> (obj === <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">void</span> <span style="color: #da8548; font-weight: bold;">0</span>;
+  }
+  <span style="color: #51afef;">if</span> (obj === <span style="color: #a9a1e1;">null</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #a9a1e1;">null</span>;
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"boolean"</span>) {
+    <span style="color: #51afef;">return</span> obj;
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"number"</span>) {
+    <span style="color: #51afef;">if</span> ((obj | <span style="color: #da8548; font-weight: bold;">0</span>) === obj &amp;&amp; obj &gt;= -<span style="color: #da8548; font-weight: bold;">536870912</span> &amp;&amp; obj &lt;= <span style="color: #da8548; font-weight: bold;">536870911</span>) {
+      <span style="color: #51afef;">return</span> obj;
+    } <span style="color: #51afef;">else</span> {
+      <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_Flonum</span>(obj);
+    }
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"function"</span>) {
+    <span style="color: #51afef;">return</span> g_host_function2scm(obj);
+  }
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"string"</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_ScmString</span>(g_str2codes(obj));
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Array</span>) {
+    <span style="color: #51afef;">return</span> obj.map( g_host2scm );
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Uint8Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_U8Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Uint16Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_U16Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Uint32Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_U32Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Int8Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_S8Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Int16Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_S16Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Int32Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_S32Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Float32Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_F32Vector</span>(obj);
+  }
+  <span style="color: #51afef;">if</span> (obj <span style="color: #51afef;">instanceof</span> <span style="color: #ECBE7B;">Float64Array</span>) {
+    <span style="color: #51afef;">return</span> <span style="color: #51afef;">new</span> <span style="color: #ECBE7B;">G_F64Vector</span>(obj);
+  }
+  <span style="color: #5B6268;">// </span><span style="color: #5B6268;">Here's the GX difference!</span>
+  <span style="color: #51afef;">if</span> (<span style="color: #51afef;">typeof</span> obj === <span style="color: #98be65;">"object"</span>) {
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">var alist = null;</span>
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">for (var key in obj) {</span>
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">alist = new G_Pair(new G_Pair(g_host2scm(key),g_host2scm(obj[key])),alist);</span>
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">}</span>
+    <span style="color: #5B6268;">// </span><span style="color: #5B6268;">return alist;</span>
+    <span style="color: #51afef;">return</span> g_host2foreign(obj);
+  }
+  <span style="color: #51afef;">throw</span> <span style="color: #98be65;">"host2scm error"</span>;
+};
+
+
+</pre>
+</div>
+
+<p>
+Now it works.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript">bar = g_host2foreign(window);
+baz = g_scm2host(bar);
+<span style="color: #5B6268;">//  </span><span style="color: #5B6268;">Window {parent: Window, opener: null, top: Window, length: 0, frames: Window, &#8230;}</span>
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3ec6e2c" class="outline-2">
+<h2 id="org3ec6e2c"><span class="section-number-2">3</span> <code>gxjs-fixes.ss</code></h2>
+<div class="outline-text-2" id="text-3">
+<p>
+Making it into an <code>.scm</code> file helps to compile it in a way that my head sees as
+normal. Since most/all of the others are first <code>.ss</code> files and our scripts will
+assume that, we&rsquo;ll do it that way as well.
+</p>
+
+<p>
+Perhaps something else even gets added to this file. We&rsquo;ll see.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #c678dd;">#</span>&lt;&lt;EOF
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>name = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+  var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+  return name<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init = function(module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>trampoline(module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = <span style="color: #dcaeea;">[]</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>register = function (module<span style="color: #c678dd;">_</span>descr) <span style="color: #dcaeea;">{</span>
+  // Keep track of all registered modules.
+  gx<span style="color: #c678dd;">_</span>gambit<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.push(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+
+  if ( typeof g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>program-descr<span style="color: #51afef;">'</span><span style="color: #dcaeea;">]</span> === <span style="color: #51afef;">'</span>object<span style="color: #51afef;">'</span> ) <span style="color: #dcaeea;">{</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>init(module<span style="color: #c678dd;">_</span>descr)<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span> else <span style="color: #dcaeea;">{</span>
+    var temp = module<span style="color: #c678dd;">_</span>descr<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+    var name = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span>.name<span style="color: #5B6268;">;</span>
+    var info = Object.prototype.hasOwnProperty.call(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #51afef;">,</span>name) <span style="color: #c678dd;">?</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #dcaeea;">[</span>name<span style="color: #dcaeea;">]</span> : null<span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>latest<span style="color: #c678dd;">_</span>registered = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+    if (<span style="color: #c678dd;">!</span>(info === null <span style="color: #98be65;">||</span> g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length)) <span style="color: #dcaeea;">{</span>
+      var index = info.index<span style="color: #5B6268;">;</span>
+      var old = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+      g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>index<span style="color: #dcaeea;">]</span> = module<span style="color: #c678dd;">_</span>descr<span style="color: #5B6268;">;</span>
+      if (old === null) <span style="color: #dcaeea;">{</span>
+        ++g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count<span style="color: #5B6268;">;</span>
+        if (g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count === g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length) <span style="color: #dcaeea;">{</span>
+          g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##program-descr"</span><span style="color: #dcaeea;">]</span> = <span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #51afef;">,</span>null<span style="color: #51afef;">,</span>false<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          temp = g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table.length - 1<span style="color: #dcaeea;">][</span>0<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>glo<span style="color: #dcaeea;">[</span><span style="color: #98be65;">"##vm-main-module-ref"</span><span style="color: #dcaeea;">]</span> = temp<span style="color: #dcaeea;">[</span>temp.length - 1<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>sp = -1<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>stack<span style="color: #dcaeea;">[</span>++g<span style="color: #c678dd;">_</span>sp<span style="color: #dcaeea;">]</span> = void 0<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>r0 = g<span style="color: #c678dd;">_</span>underflow<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>nargs = 0<span style="color: #5B6268;">;</span>
+          g<span style="color: #c678dd;">_</span>trampoline(g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>0<span style="color: #dcaeea;">][</span>4<span style="color: #dcaeea;">]</span>)<span style="color: #5B6268;">;</span>
+        <span style="color: #dcaeea;">}</span>
+      <span style="color: #dcaeea;">}</span>
+    <span style="color: #dcaeea;">}</span>
+  <span style="color: #dcaeea;">}</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>reset = function () <span style="color: #dcaeea;">{</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>count = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map = <span style="color: #dcaeea;">{}</span><span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = null<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>latest<span style="color: #c678dd;">_</span>registered = null<span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>init = function (link<span style="color: #c678dd;">_</span>info) <span style="color: #dcaeea;">{</span>
+  var n = link<span style="color: #c678dd;">_</span>info.length<span style="color: #5B6268;">;</span>
+  var i = 0<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>registry<span style="color: #c678dd;">_</span>reset()<span style="color: #5B6268;">;</span>
+  g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table = new Array(n)<span style="color: #5B6268;">;</span>
+  while (i &lt; n) <span style="color: #dcaeea;">{</span>
+    var info = link<span style="color: #c678dd;">_</span>info<span style="color: #dcaeea;">[</span>i<span style="color: #dcaeea;">]</span><span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>map<span style="color: #dcaeea;">[</span>info.name<span style="color: #dcaeea;">]</span> = info<span style="color: #5B6268;">;</span>
+    g<span style="color: #c678dd;">_</span>module<span style="color: #c678dd;">_</span>table<span style="color: #dcaeea;">[</span>i<span style="color: #dcaeea;">]</span> = null<span style="color: #5B6268;">;</span>
+    ++i<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+g<span style="color: #c678dd;">_</span>scm2host = function (obj) <span style="color: #dcaeea;">{</span>
+  if (obj === void 0) <span style="color: #dcaeea;">{</span>
+    return obj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj === null) <span style="color: #dcaeea;">{</span>
+    return obj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (typeof obj === <span style="color: #98be65;">"boolean"</span>) <span style="color: #dcaeea;">{</span>
+    return obj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (typeof obj === <span style="color: #98be65;">"number"</span>) <span style="color: #dcaeea;">{</span>
+    return obj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  // this is what we add
+  if (obj instanceof G<span style="color: #c678dd;">_</span>Foreign) <span style="color: #dcaeea;">{</span>
+    return g<span style="color: #c678dd;">_</span>foreign2host(obj)<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>Flonum) <span style="color: #dcaeea;">{</span>
+    return obj.val<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>ScmString) <span style="color: #dcaeea;">{</span>
+    return obj.toString()<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof Array) <span style="color: #dcaeea;">{</span>
+    return obj.map( g<span style="color: #c678dd;">_</span>scm2host )<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>U8Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>U16Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>U32Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>S8Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>S16Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>S32Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>F32Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>F64Vector) <span style="color: #dcaeea;">{</span>
+    return obj.elems<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>if (obj instanceof G<span style="color: #c678dd;">_</span>Pair) <span style="color: #dcaeea;">{</span>
+    var jsobj = <span style="color: #dcaeea;">{}</span><span style="color: #5B6268;">;</span>
+    var i = 0<span style="color: #5B6268;">;</span>
+    while (obj instanceof G<span style="color: #c678dd;">_</span>Pair) <span style="color: #dcaeea;">{</span>
+      var elem = obj.car<span style="color: #5B6268;">;</span>
+      if (elem instanceof G<span style="color: #c678dd;">_</span>Pair) <span style="color: #dcaeea;">{</span>
+        jsobj<span style="color: #dcaeea;">[</span>g<span style="color: #c678dd;">_</span>scm2host(elem.car)<span style="color: #dcaeea;">]</span> = g<span style="color: #c678dd;">_</span>scm2host(elem.cdr)<span style="color: #5B6268;">;</span>
+      <span style="color: #dcaeea;">}</span> else <span style="color: #dcaeea;">{</span>
+        jsobj<span style="color: #dcaeea;">[</span>i<span style="color: #dcaeea;">]</span> = g<span style="color: #c678dd;">_</span>scm2host(elem)<span style="color: #5B6268;">;</span>
+      <span style="color: #dcaeea;">}</span>
+      ++i<span style="color: #5B6268;">;</span>
+      obj = obj.cdr<span style="color: #5B6268;">;</span>
+    <span style="color: #dcaeea;">}</span>
+    return jsobj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj instanceof G<span style="color: #c678dd;">_</span>Structure) <span style="color: #dcaeea;">{</span>
+    throw <span style="color: #98be65;">"scm2host error (cannot convert Structure)"</span><span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (typeof obj === <span style="color: #98be65;">"function"</span>) <span style="color: #dcaeea;">{</span>
+    return g<span style="color: #c678dd;">_</span>procedure2host(obj)<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  throw <span style="color: #98be65;">"scm2host error"</span><span style="color: #5B6268;">;</span>
+<span style="color: #dcaeea;">}</span><span style="color: #5B6268;">;</span>
+
+
+g<span style="color: #c678dd;">_</span>host2scm = function (obj) <span style="color: #dcaeea;">{</span>
+  if (obj === void 0) <span style="color: #dcaeea;">{</span>
+    return void 0<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (obj === null) <span style="color: #dcaeea;">{</span>
+    return null<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (typeof obj === <span style="color: #98be65;">"boolean"</span>) <span style="color: #dcaeea;">{</span>
+    return obj<span style="color: #5B6268;">;</span>
+  <span style="color: #dcaeea;">}</span>
+  if (typeof obj === <span style="color: #98be65;">"number"</span>) <span style="color: #dcaeea;">{</span>
+    if ((obj <span style="color: #98be65;">| 0) === obj &amp;&amp; obj &gt;= -536870912 &amp;&amp; obj &lt;= 536870911) {</span>
+<span style="color: #98be65;">      return obj;</span>
+<span style="color: #98be65;">    } else {</span>
+<span style="color: #98be65;">      return new G_Flonum(obj);</span>
+<span style="color: #98be65;">    }</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (typeof obj === "function") {</span>
+<span style="color: #98be65;">    return g_host_function2scm(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (typeof obj === "string") {</span>
+<span style="color: #98be65;">    return new G_ScmString(g_str2codes(obj));</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Array) {</span>
+<span style="color: #98be65;">    return obj.map( g_host2scm );</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Uint8Array) {</span>
+<span style="color: #98be65;">    return new G_U8Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Uint16Array) {</span>
+<span style="color: #98be65;">    return new G_U16Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Uint32Array) {</span>
+<span style="color: #98be65;">    return new G_U32Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Int8Array) {</span>
+<span style="color: #98be65;">    return new G_S8Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Int16Array) {</span>
+<span style="color: #98be65;">    return new G_S16Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Int32Array) {</span>
+<span style="color: #98be65;">    return new G_S32Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Float32Array) {</span>
+<span style="color: #98be65;">    return new G_F32Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  if (obj instanceof Float64Array) {</span>
+<span style="color: #98be65;">    return new G_F64Vector(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  // Here's the GX difference!</span>
+<span style="color: #98be65;">  if (typeof obj === "object") {</span>
+<span style="color: #98be65;">    // var alist = null;</span>
+<span style="color: #98be65;">    // for (var key in obj) {</span>
+<span style="color: #98be65;">    // alist = new G_Pair(new G_Pair(g_host2scm(key),g_host2scm(obj[key])),alist);</span>
+<span style="color: #98be65;">    // }</span>
+<span style="color: #98be65;">    // return alist;</span>
+<span style="color: #98be65;">    return g_host2foreign(obj);</span>
+<span style="color: #98be65;">  }</span>
+<span style="color: #98be65;">  throw "host2scm error";</span>
+<span style="color: #98be65;">};</span>
+
+
+
+<span style="color: #98be65;">EOF</span>
+<span style="color: #98be65;">)</span>
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-org1d1b6c3" class="outline-2">
+<h2 id="org1d1b6c3"><span class="section-number-2">4</span> Change the boot file into aync loading</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+This way we can see that it is loading and not a blank page. It still loads
+almost instantly, but sometimes I add a lot more in there or it recurses
+indefinitely.
+</p>
+
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">import</span> { Loading } from <span style="color: #98be65;">'quasar'</span>
+
+<span style="color: #51afef;">export</span> <span style="color: #51afef;">default</span> ({ app, router, store, Vue }) =&gt; {
+  Loading.show()
+  console.log(<span style="color: #98be65;">'router'</span>, router)
+  router.beforeEach((to, from, next) =&gt; {
+    (<span style="color: #51afef;">async</span> () =&gt; {
+      <span style="color: #51afef;">await</span> <span style="color: #51afef;">import</span>(<span style="color: #98be65;">'app/public/gxjs.js'</span>)
+      Loading.hide()
+      next()
+    })()
+  })
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-jsJsoRefAndRefSet" class="outline-2">
+<h2 id="jsJsoRefAndRefSet"><span class="section-number-2">5</span> <code>js#jso</code> and <code>js#ref</code></h2>
+<div class="outline-text-2" id="text-jsJsoRefAndRefSet">
+<p>
+While the <code>js#plist-&gt;jso</code> and <code>vue#component</code> were needed to get to this point,
+now that we have the foreign objects going back and forth with ease, we can use
+it to make a simple <code>js#jso</code> constructor function.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#new-plist-&gt;jso</span> plist)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">alist</span> <span style="color: #dcaeea;">[]</span>)
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lp</span> ((pl plist))
+    (<span style="color: #51afef;">if</span> (null? pl)
+      (<span style="color: #51afef;">let</span> ((jso ((<span style="color: #51afef;">lambda</span> () (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"(() =&gt; { foo = (@1@);  return g_host2foreign(g_scm2host(foo)); })();"</span>
+                                            alist)))))
+        <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">(js#console.log jso)</span>
+        jso)
+        (<span style="color: #51afef;">let*</span> ((key (<span style="color: #c678dd;">##</span>car pl))
+               (key (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">or</span> (keyword? key) (symbol? key))
+                      (<span style="color: #c678dd;">##</span>symbol-&gt;string key)
+                      key))
+               (val (<span style="color: #c678dd;">##</span>cadr pl))
+               (rest (<span style="color: #c678dd;">##</span>cddr pl)))
+        (<span style="color: #51afef;">set!</span> alist (<span style="color: #c678dd;">##</span>cons (<span style="color: #c678dd;">##</span>cons key val) alist))
+        (lp rest)))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#jso</span> . plist)
+  (js<span style="color: #c678dd;">#</span>new-plist-&gt;jso plist))
+</pre>
+</div>
+
+<p>
+Now that we have a <code>js#jso</code>, it would be nice to reference its contents.
+</p>
+</div>
+
+
+<div id="outline-container-org3bb17fa" class="outline-3">
+<h3 id="org3bb17fa"><span class="section-number-3">5.1</span> <code>js#ref</code> and <code>js#ref-set!</code></h3>
+<div class="outline-text-3" id="text-5-1">
+<p>
+We can reference a jso and set it fairly easily.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#ref</span> obj ref)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"((obj, ref) =&gt; {</span>
+<span style="color: #98be65;">   if (obj instanceof G_Foreign) {</span>
+<span style="color: #98be65;">      obj = g_foreign2host(obj);</span>
+<span style="color: #98be65;">   }</span>
+<span style="color: #98be65;">return obj[ref];</span>
+
+<span style="color: #98be65;">})(@1@, @2@);"</span> obj ref))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#ref-set!</span> obj ref val)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"((obj, ref, val) =&gt; {</span>
+<span style="color: #98be65;">   if (obj instanceof G_Foreign) {</span>
+<span style="color: #98be65;">      obj = g_foreign2host(obj);</span>
+<span style="color: #98be65;">   }</span>
+<span style="color: #98be65;">return (obj[ref] = val);</span>
+
+<span style="color: #98be65;">})(@1@, @2@, @3@);"</span> obj ref val))
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-jsFunctionAndThis" class="outline-2">
+<h2 id="jsFunctionAndThis"><span class="section-number-2">6</span> <code>js#function</code>, Our first syntax.</h2>
+<div class="outline-text-2" id="text-jsFunctionAndThis">
+<p>
+Now that we have the foreign objects, which I think of as <code>*pointers</code> really, or
+wrappers to pointers, but I digress&#x2026; now that we have
+<code>g_[host|scm]2[scm|host]</code> working with foreign types making a <code>js#function</code> that
+interacts with the browser is fairly trivial.
+</p>
+
+<p>
+Declaring <code>js#this</code> is really the big idea. We need it to do the entire point
+behind this log.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme"><span style="color: #c678dd;">namespace:</span> <span style="color: #c678dd;">#f</span>
+(<span style="color: #51afef;">export</span> js<span style="color: #c678dd;">#</span>function js<span style="color: #c678dd;">#</span>this)
+
+(<span style="color: #51afef;">def</span> <span style="color: #c678dd;">js#this</span> (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"window;"</span>))
+
+(<span style="color: #51afef;">defsyntax</span> (<span style="color: #dcaeea;">js#function</span> stx)
+  (<span style="color: #51afef;">syntax-case</span> stx ()
+    ((macro <span style="color: #c678dd;">_</span>args body <span style="color: #c678dd;">...</span>)
+     (<span style="color: #51afef;">let*</span> ((args (syntax-&gt;datum <span style="color: #51afef;">#'</span><span style="color: #c678dd;">_</span>args))
+            (binds (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lp</span> ((bs args) (n 0))
+                     (<span style="color: #51afef;">if</span> (null? bs) bs
+                         (cons (list (car bs) <span style="color: #51afef;">`</span>(<span style="color: #c678dd;">##</span>vector-ref js<span style="color: #c678dd;">#</span>arguments <span style="color: #51afef;">,</span>n))
+                               (lp (cdr bs) (+ n 1)))))))
+       (<span style="color: #51afef;">with-syntax</span> ((lbinds (datum-&gt;syntax <span style="color: #51afef;">#'</span>macro binds))
+                     (this
+                      (datum-&gt;syntax <span style="color: #51afef;">#'</span>macro <span style="color: #51afef;">'</span>js<span style="color: #c678dd;">#</span>this))
+                     (args (datum-&gt;syntax <span style="color: #51afef;">#'</span>macro <span style="color: #51afef;">'</span>js<span style="color: #c678dd;">#</span>arguments)))
+           <span style="color: #51afef;">#'</span>(<span style="color: #51afef;">let</span> ((fn (<span style="color: #51afef;">lambda</span> (this args) (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lbinds</span> body <span style="color: #c678dd;">...</span>))))
+               (js<span style="color: #c678dd;">#</span>js-&gt;foreign (<span style="color: #c678dd;">##</span>inline-host-expression
+                              <span style="color: #98be65;">"function (...args) { let scmProc = g_scm2host(@1@);</span>
+<span style="color: #98be65;">  return scmProc(this, args);</span>
+<span style="color: #98be65;">   };"</span> fn))))))))
+</pre>
+</div>
+</div>
+</div>
+
+
+
+<div id="outline-container-org0240bdf" class="outline-2">
+<h2 id="org0240bdf"><span class="section-number-2">7</span> <code>##number-&gt;string~</code>, a needed prim.</h2>
+<div class="outline-text-2" id="text-7">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">##number-&gt;string</span> n)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"(() =&gt; { n = g_scm2host(@1@) ; return g_host2scm(n.toString()); })();"</span> n))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf48a77c" class="outline-2">
+<h2 id="orgf48a77c"><span class="section-number-2">8</span> <code>js#++</code>, really just to make it short.</h2>
+<div class="outline-text-2" id="text-8">
+<p>
+In <b>Common Lisp</b> there&rsquo;s <code>INCF</code>, &ldquo;used for incrementing [&#x2026;] the value of
+place&rdquo;. We&rsquo;ll create a <code>js#++</code> macro just to line up with our recreation which is coming soon.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">defsyntax</span> (<span style="color: #dcaeea;">js#++</span> stx)
+  (<span style="color: #51afef;">syntax-case</span> stx ()
+    ((macro place number)
+       <span style="color: #51afef;">#'</span>(<span style="color: #51afef;">let</span> ((val place))
+           (<span style="color: #51afef;">set!</span> place (+ val number))))
+    ((macro place)
+     <span style="color: #51afef;">#'</span>(macro place 1))))
+</pre>
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-orge4b107a" class="outline-2">
+<h2 id="orge4b107a"><span class="section-number-2">9</span> <b>Vue.js</b> Render Functions and Gerbil</h2>
+<div class="outline-text-2" id="text-9">
+<p>
+Currently our only real component looks like this.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(vue<span style="color: #c678dd;">#</span>component
+ <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+ <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span><span style="color: #c678dd;">count:</span> 0<span style="color: #dcaeea;">]</span>
+ <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;|</span>)
+</pre>
+</div>
+
+<p>
+In reality that&rsquo;s not a lot of scheme. Vue contains a compiler which takes
+templates and creates a render function<sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>. Here&rsquo;s what I think it does.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-javascript"><span style="color: #51afef;">export</span> <span style="color: #51afef;">default</span> {
+  name: <span style="color: #98be65;">'ButtonCounter'</span>,
+  <span style="color: #c678dd;">data</span>: <span style="color: #51afef;">function</span> () {
+    <span style="color: #51afef;">return</span> {
+      count: <span style="color: #da8548; font-weight: bold;">0</span>
+    }
+  },
+  <span style="color: #c678dd;">render</span>: <span style="color: #51afef;">function</span> (<span style="color: #dcaeea;">createElement</span>) {
+    <span style="color: #51afef;">return</span> createElement(
+      <span style="color: #98be65;">'button'</span>,
+      {
+        on: {
+          click: () =&gt; { <span style="color: #a9a1e1;">this</span>.count++ }
+        }
+      },
+        <span style="color: #98be65;">'Render: You clicked me '</span> + <span style="color: #a9a1e1;">this</span>.count + <span style="color: #98be65;">' times.'</span>);
+  }
+}
+</pre>
+</div>
+
+<p>
+Let&rsquo;s try a direct translation. This is possible! It took a wee bit of a lot to
+get here.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">  (js<span style="color: #c678dd;">#</span>jso
+   <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"ButtonCounter"</span>
+   <span style="color: #c678dd;">data:</span> (<span style="color: #51afef;">lambda</span> <span style="color: #c678dd;">_</span> (js<span style="color: #c678dd;">#</span>jso <span style="color: #c678dd;">count:</span> 0))
+   <span style="color: #c678dd;">render:</span> (js<span style="color: #c678dd;">#</span>function (createElement)
+            (createElement
+             <span style="color: #98be65;">"button"</span>
+             (js<span style="color: #c678dd;">#</span>jso
+              <span style="color: #c678dd;">on:</span> (js<span style="color: #c678dd;">#</span>jso
+                   <span style="color: #c678dd;">click:</span> (<span style="color: #51afef;">lambda</span> <span style="color: #c678dd;">_</span> (js<span style="color: #c678dd;">#</span>++ (js<span style="color: #c678dd;">#</span>ref js<span style="color: #c678dd;">#</span>this <span style="color: #c678dd;">count:</span>)))))
+             (<span style="color: #c678dd;">##</span>string-append <span style="color: #98be65;">"Scheme Render?: You clicked me "</span> (<span style="color: #c678dd;">##</span>number-&gt;string (js<span style="color: #c678dd;">#</span>ref js<span style="color: #c678dd;">#</span>this <span style="color: #c678dd;">count:</span>)) <span style="color: #98be65;">" times"</span>))))
+</pre>
+</div>
+</div>
+
+
+<div id="outline-container-org0bb7a5c" class="outline-3">
+<h3 id="org0bb7a5c"><span class="section-number-3">9.1</span> <i>File</i> <code>button-counter.ss</code></h3>
+<div class="outline-text-3" id="text-9-1">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:js/syntax</span>)
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#new-plist-&gt;jso</span> plist)
+  (<span style="color: #51afef;">def</span> <span style="color: #c678dd;">alist</span> <span style="color: #dcaeea;">[]</span>)
+  (<span style="color: #51afef;">let</span> <span style="color: #c678dd;">lp</span> ((pl plist))
+    (<span style="color: #51afef;">if</span> (null? pl)
+      (<span style="color: #51afef;">let</span> ((jso ((<span style="color: #51afef;">lambda</span> () (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"(() =&gt; { foo = (@1@);  return g_host2foreign(g_scm2host(foo)); })();"</span>
+                                            alist)))))
+        <span style="color: #5B6268;">;; </span><span style="color: #5B6268;">(js#console.log jso)</span>
+        jso)
+        (<span style="color: #51afef;">let*</span> ((key (<span style="color: #c678dd;">##</span>car pl))
+               (key (<span style="color: #51afef;">if</span> (<span style="color: #51afef;">or</span> (keyword? key) (symbol? key))
+                      (<span style="color: #c678dd;">##</span>symbol-&gt;string key)
+                      key))
+               (val (<span style="color: #c678dd;">##</span>cadr pl))
+               (rest (<span style="color: #c678dd;">##</span>cddr pl)))
+        (<span style="color: #51afef;">set!</span> alist (<span style="color: #c678dd;">##</span>cons (<span style="color: #c678dd;">##</span>cons key val) alist))
+        (lp rest)))))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#jso</span> . plist)
+  (js<span style="color: #c678dd;">#</span>new-plist-&gt;jso plist))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#ref</span> obj ref)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"((obj, ref) =&gt; {</span>
+<span style="color: #98be65;">   if (obj instanceof G_Foreign) {</span>
+<span style="color: #98be65;">      obj = g_foreign2host(obj);</span>
+<span style="color: #98be65;">   }</span>
+<span style="color: #98be65;">return obj[ref];</span>
+
+<span style="color: #98be65;">})(@1@, @2@);"</span> obj ref))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">js#ref-set!</span> obj ref val)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"((obj, ref, val) =&gt; {</span>
+<span style="color: #98be65;">   if (obj instanceof G_Foreign) {</span>
+<span style="color: #98be65;">      obj = g_foreign2host(obj);</span>
+<span style="color: #98be65;">   }</span>
+<span style="color: #98be65;">return (obj[ref] = val);</span>
+
+<span style="color: #98be65;">})(@1@, @2@, @3@);"</span> obj ref val))
+
+(<span style="color: #51afef;">def</span> (<span style="color: #c678dd;">##number-&gt;string</span> n)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"(() =&gt; { n = g_scm2host(@1@) ; return g_host2scm(n.toString()); })();"</span> n))
+
+(<span style="color: #51afef;">defsyntax</span> (<span style="color: #dcaeea;">js#++</span> stx)
+  (<span style="color: #51afef;">syntax-case</span> stx ()
+    ((macro place number)
+       <span style="color: #51afef;">#'</span>(<span style="color: #51afef;">let</span> ((val place))
+           (<span style="color: #51afef;">set!</span> place (+ val number))))
+    ((macro place)
+     <span style="color: #51afef;">#'</span>(macro place 1))))
+
+(<span style="color: #51afef;">def</span> <span style="color: #c678dd;">render-button-counter</span>
+    (js<span style="color: #c678dd;">#</span>jso
+     <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"ButtonCounter"</span>
+     <span style="color: #c678dd;">data:</span> (<span style="color: #51afef;">lambda</span> <span style="color: #c678dd;">_</span> (js<span style="color: #c678dd;">#</span>jso <span style="color: #c678dd;">count:</span> 0))
+     <span style="color: #c678dd;">render:</span> (js<span style="color: #c678dd;">#</span>function (createElement)
+              (createElement
+               <span style="color: #98be65;">"button"</span>
+               (js<span style="color: #c678dd;">#</span>jso
+                <span style="color: #c678dd;">on:</span> (js<span style="color: #c678dd;">#</span>jso
+                     <span style="color: #c678dd;">click:</span> (<span style="color: #51afef;">lambda</span> <span style="color: #c678dd;">_</span> (js<span style="color: #c678dd;">#</span>++ (js<span style="color: #c678dd;">#</span>ref js<span style="color: #c678dd;">#</span>this <span style="color: #c678dd;">count:</span>)))))
+               (<span style="color: #c678dd;">##</span>string-append <span style="color: #98be65;">"Scheme Render?: You clicked me "</span> (<span style="color: #c678dd;">##</span>number-&gt;string (js<span style="color: #c678dd;">#</span>ref js<span style="color: #c678dd;">#</span>this <span style="color: #c678dd;">count:</span>)) <span style="color: #98be65;">" times"</span>)))))
+
+(<span style="color: #51afef;">def</span> <span style="color: #c678dd;">render-button-counter-js</span>
+  (vue<span style="color: #c678dd;">#</span>component
+   <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"ButtonCounter"</span>
+   <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span><span style="color: #c678dd;">count:</span> 0<span style="color: #dcaeea;">]</span>
+   <span style="color: #c678dd;">render:</span> <span style="color: #5B6268;">#;(lambda (create-element) (create-element "button" "here"))</span>
+   (js<span style="color: #c678dd;">#</span>js-&gt;foreign (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"function (createElement) {</span>
+<span style="color: #98be65;">    return createElement(</span>
+<span style="color: #98be65;">      'button',</span>
+<span style="color: #98be65;">      {</span>
+<span style="color: #98be65;">        on: {</span>
+<span style="color: #98be65;">          click: () =&gt; { this.count++ }</span>
+<span style="color: #98be65;">        }</span>
+<span style="color: #98be65;">      },</span>
+<span style="color: #98be65;">        'Gerbil Render: You clicked me ' + this.count + ' times.');</span>
+<span style="color: #98be65;">  }"</span>))
+   ))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.lazyButtonCounter = (@1@);</span>
+<span style="color: #98be65;">  exports.renderButtonCounter = g_scm2host(@2@);</span>
+<span style="color: #98be65;">  window.renb = exports.renderButtonCounter;</span>
+<span style="color: #98be65;">   console.log('lazy init!! button!!');"</span>
+(vue<span style="color: #c678dd;">#</span>component
+  <span style="color: #c678dd;">name:</span> <span style="color: #98be65;">"button-counter"</span>
+  <span style="color: #c678dd;">data:</span> <span style="color: #dcaeea;">[</span> <span style="color: #c678dd;">count:</span> 0 <span style="color: #dcaeea;">]</span>
+  <span style="color: #c678dd;">template:</span> <span style="color: #51afef;">'</span><span style="color: #98be65;">|&lt;button v-on:click="count++"&gt; LAZYYY!!!! You clicked me {{ count }} times.&lt;/button&gt;|</span>)
+
+  render-button-counter)
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0339586" class="outline-2">
+<h2 id="org0339586"><span class="section-number-2">10</span> Putting it all together</h2>
+<div class="outline-text-2" id="text-10">
+<p>
+Now to embed everything into a <code>:js</code> <b>Gerbil</b> package.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">package:</span> js)
+</pre>
+</div>
+
+<p>
+We&rsquo;ll have 3 steps.
+</p>
+
+<ol class="org-ol">
+<li><code>gxjs</code> :: Our basic run time</li>
+<li>All the lazy modules</li>
+<li>The gambit repl (done the old way)</li>
+</ol>
+
+<p>
+Our <code>_comp</code> shell function takes a <code>.ss</code>, makes a <code>static/.scm</code> and compiles that to a <code>.js</code>.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_js</span>=<span style="color: #51afef; font-weight: bold;">`</span><span style="color: #51afef; font-weight: bold;">echo</span><span style="color: #51afef; font-weight: bold;"> $_js | sed 's/js__\(.*\)/\1/'`</span>
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/js__$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orge334dd2" class="outline-3">
+<h3 id="orge334dd2"><span class="section-number-3">10.1</span> Build <code>gxjs</code></h3>
+<div class="outline-text-3" id="text-10-1">
+<div class="org-src-container">
+<pre class="src src-shell">gxc -v syntax.ss
+_comp gxjs-fixes.ss
+_comp syntax.ss
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-fixes.js syntax.js gxjs-init.js gxjs-rt.js gxjs-ffi.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+
+<span style="color: #ECBE7B;">cp</span> gxjs.js ../public/
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf7e4e56" class="outline-3">
+<h3 id="orgf7e4e56"><span class="section-number-3">10.2</span> Build the modules</h3>
+<div class="outline-text-3" id="text-10-2">
+<ol class="org-ol">
+<li>vue</li>
+<li>hello</li>
+<li>gambit-module-test</li>
+<li>button-counter</li>
+</ol>
+
+<div class="org-src-container">
+<pre class="src src-shell">_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+<span style="color: #ECBE7B;">cp</span> vue.js hello.js gambit-module-test.js button-counter.js ../public
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org4799b73" class="outline-4">
+<h4 id="org4799b73"><span class="section-number-4">10.2.1</span> <code>gambit-module-test.ss</code>: A module not loaded in the gambit program</h4>
+<div class="outline-text-4" id="text-10-2-1">
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.Test = (arg) =&gt; {</span>
+<span style="color: #98be65;">   var hello_fn = g_scm2host(@1@)</span>
+<span style="color: #98be65;">   hello_fn('Test' + arg)</span>
+<span style="color: #98be65;">}</span>
+
+<span style="color: #98be65;">console.log('init gambit-module-test');</span>
+
+<span style="color: #98be65;">"</span>
+ (<span style="color: #51afef;">lambda</span> (str)
+   (<span style="color: #51afef;">let*</span> ((mod (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_module_name(gx_gambit_module_table[1]);"</span>)))
+     (js<span style="color: #c678dd;">#</span>console.log mod)
+     (js<span style="color: #c678dd;">#</span>alert str))))
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3a59007" class="outline-3">
+<h3 id="org3a59007"><span class="section-number-3">10.3</span> Now the full gambit repl</h3>
+<div class="outline-text-3" id="text-10-3">
+<p>
+This time we try without the module reset/init.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-shell">_comp lazy-gambit-repl.ss
+<span style="color: #dcaeea;">_lazy</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> lazy-gambit-repl.js </span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">gsc</span><span style="color: #51afef; font-weight: bold;"> -e '(display (path-expand "~~lib/_gambit.js")</span><span style="color: #98be65;">)')  &gt; gambit-repl.js"</span>
+<span style="color: #ECBE7B;">echo</span> Building the gambit repl: <span style="color: #98be65;">\"</span>$<span style="color: #dcaeea;">_lazy</span><span style="color: #98be65;">\"</span>; bash -c <span style="color: #98be65;">"$_lazy"</span>;
+<span style="color: #ECBE7B;">cp</span> gambit-repl.js ../public
+</pre>
+</div>
+
+
+<div class="org-src-container">
+<pre class="src src-scheme">(<span style="color: #51afef;">import</span> <span style="color: #c678dd;">:gerbil/gambit</span>)
+(<span style="color: #51afef;">declare</span> (extended-bindings))
+
+(<span style="color: #c678dd;">##</span>inline-host-statement
+ <span style="color: #98be65;">"exports.evalElement = (arg) =&gt; {</span>
+<span style="color: #98be65;">  alert('Lazy? This is working without the reset Hello ' + arg)</span>
+<span style="color: #98be65;">}"</span>
+)
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">document.getElementById</span> id)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2foreign(document.getElementById(g_scm2host(@1@)))"</span> id))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">Element.innerText-ref</span> elem)
+  (<span style="color: #c678dd;">##</span>inline-host-expression <span style="color: #98be65;">"g_host2scm(g_foreign2host(@1@).innerText)"</span> elem))
+
+(<span style="color: #51afef;">define</span> (<span style="color: #c678dd;">g-sourceCodeRun</span> id)
+  (<span style="color: #51afef;">let*</span> ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (<span style="color: #51afef;">let</span> ((expr (cons <span style="color: #51afef;">'</span><span style="color: #c678dd;">##</span>begin (with-input-from-string code read-all))))
+      (<span style="color: #51afef;">eval</span> expr))
+
+    ))
+
+(<span style="color: #c678dd;">##</span>inline-host-declaration <span style="color: #98be65;">"g_sourceCodeRun = function () { alert('sourceCodeRun'); };"</span>)
+
+(<span style="color: #c678dd;">##</span>inline-host-statement <span style="color: #98be65;">"</span>
+<span style="color: #98be65;">g_sourceCodeRun = g_scm2host(@1@);</span>
+<span style="color: #98be65;">exports.sourceCodeRun = g_sourceCodeRun;"</span> g-sourceCodeRun)
+
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1e111a7" class="outline-2">
+<h2 id="org1e111a7"><span class="section-number-2">11</span> <code>Index.vue</code></h2>
+<div class="outline-text-2" id="text-11">
+<p>
+Going to add the log files as html in order to have something useful to look at
+live.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-vue">&lt;<span style="color: #c678dd;">template</span>&gt;
+  &lt;<span style="color: #c678dd;">q-page</span>&gt;
+    &lt;<span style="color: #c678dd;">div</span>&gt;
+      &lt;<span style="color: #c678dd;">q-splitter</span>
+        <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"splitterModel"</span>
+        &gt;
+
+        &lt;<span style="color: #c678dd;">template</span> v-slot:before&gt;
+        &lt;<span style="color: #c678dd;">q-tabs</span>
+          <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"tab"</span> no-caps
+          vertical
+          <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-teal"</span>
+        &gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"index"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"loyalty"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"GerbilJS"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"repl"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"keyboard"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"REPL"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"weblog"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"format_list_numbered"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"Log Files"</span> /&gt;
+          &lt;<span style="color: #c678dd;">q-tab</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"tests"</span> <span style="color: #dcaeea;">icon</span>=<span style="color: #98be65;">"verified"</span> <span style="color: #dcaeea;">label</span>=<span style="color: #98be65;">"Tests"</span> /&gt;
+        &lt;/<span style="color: #c678dd;">q-tabs</span>&gt;
+      &lt;/<span style="color: #c678dd;">template</span>&gt;
+
+      &lt;<span style="color: #c678dd;">template</span> v-slot:after&gt;
+        &lt;<span style="color: #c678dd;">q-tab-panels</span>
+          <span style="color: #dcaeea;">v-model</span>=<span style="color: #98be65;">"tab"</span>
+          animated
+          swipeable
+          vertical
+          <span style="color: #dcaeea;">transition-prev</span>=<span style="color: #98be65;">"jump-up"</span>
+          <span style="color: #dcaeea;">transition-next</span>=<span style="color: #98be65;">"jump-up"</span>
+        &gt;
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"index"</span>&gt;
+            &lt;<span style="color: #c678dd;">span</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4"</span>&gt;GxQuasar&lt;/<span style="color: #c678dd;">span</span>&gt;
+            &lt;<span style="color: #c678dd;">span</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">'text-subtitle2'</span>&gt;An overview of Gerbil Scheme in JavaScript&lt;/<span style="color: #c678dd;">span</span>&gt;
+            &lt;<span style="color: #c678dd;">hr</span>&gt;
+            &lt;<span style="color: #c678dd;">p</span>&gt; Developing Web Applications takes knowledge of a lot of
+            languages.&lt;/<span style="color: #c678dd;">p</span>&gt;
+            &lt;<span style="color: #c678dd;">p</span>&gt;Centralizing on a lisp dialect, in
+            particular &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://cons.io"</span>&gt;&lt;<span style="color: #c678dd;">b</span>&gt;<span style="font-weight: bold;">Gerbil</span>&lt;/<span style="color: #c678dd;">b</span>&gt;: a meta-dialect
+            of Scheme&lt;/<span style="color: #c678dd;">a</span>&gt;, makes things a lot easier. &lt;/<span style="color: #c678dd;">p</span>&gt;
+
+            &lt;<span style="color: #c678dd;">p</span>&gt;To have a look at the code, see the &lt;<span style="color: #c678dd;">code</span>&gt;./gx/&lt;/<span style="color: #c678dd;">code</span>&gt; directory in &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://github.com/drewc/gx-quasar"</span>&gt;the github repo. &lt;/<span style="color: #c678dd;">a</span>&gt; &lt;/<span style="color: #c678dd;">p</span>&gt;
+
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"repl"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;ReadEvalPrint(actually alert, then wait, before)Loop&lt;/<span style="color: #c678dd;">div</span>&gt;
+
+            This is currently just a &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"http://gambitscheme.org/"</span>&gt;Gambit
+            Scheme&lt;/<span style="color: #c678dd;">a</span>&gt; REPL. Gambit is the language that Gerbil
+            currently &lt;<span style="color: #c678dd;">a</span> <span style="color: #dcaeea;">href</span>=<span style="color: #98be65;">"https://en.wikipedia.org/wiki/Source-to-source_compiler"</span>&gt;transpiles&lt;/<span style="color: #c678dd;">a</span>&gt;
+            to which itself can transpile to JavaScript.
+
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"full-width"</span> <span style="color: #dcaeea;">contenteditable</span>=<span style="color: #98be65;">"true"</span> <span style="color: #dcaeea;">id</span>=<span style="color: #98be65;">"gx_repl"</span> <span style="color: #dcaeea;">style</span>=<span style="color: #98be65;">"max-width: 300px; height: 25vh; border: 2px solid black;"</span>&gt;
+              (list "123" 456 #(7 8 9))
+            &lt;/<span style="color: #c678dd;">div</span>&gt;
+
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"sourceCodeRun('gx_repl')"</span>&gt; Repl &lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+            &lt;<span style="color: #c678dd;">hr</span>&gt;
+
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"weblog"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;Log Files&lt;/<span style="color: #c678dd;">div</span>&gt;
+            &lt;<span style="color: #c678dd;">log-index</span>&gt;&lt;/<span style="color: #c678dd;">log-index</span>&gt;
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+
+          &lt;<span style="color: #c678dd;">q-tab-panel</span> <span style="color: #dcaeea;">name</span>=<span style="color: #98be65;">"tests"</span>&gt;
+            &lt;<span style="color: #c678dd;">div</span> <span style="color: #dcaeea;">class</span>=<span style="color: #98be65;">"text-h4 q-mb-md"</span>&gt;Tests&lt;/<span style="color: #c678dd;">div</span>&gt;
+            This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
+            &lt;<span style="color: #c678dd;">js-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">js-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">render-js-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">render-js-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">render-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">render-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">button-counter</span>&gt;&lt;/<span style="color: #c678dd;">button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">lazy-button-counter</span>&gt;&lt;/<span style="color: #c678dd;">lazy-button-counter</span>&gt;
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Hello('WOrld! Tahgle!')"</span>&gt; Hello World&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+            &lt;<span style="color: #c678dd;">q-btn</span> <span style="color: #dcaeea;">color</span>=<span style="color: #98be65;">"red"</span> @click=<span style="color: #98be65;">"Test('WOrld! Tahgle!')"</span>&gt; Test function&lt;/<span style="color: #c678dd;">q-btn</span>&gt;
+          &lt;/<span style="color: #c678dd;">q-tab-panel</span>&gt;
+        &lt;/<span style="color: #c678dd;">q-tab-panels</span>&gt;
+      &lt;/<span style="color: #c678dd;">template</span>&gt;
+
+    &lt;/<span style="color: #c678dd;">q-splitter</span>&gt;
+  &lt;/<span style="color: #c678dd;">div</span>&gt;
+  &lt;/<span style="color: #c678dd;">q-page</span>&gt;
+&lt;/<span style="color: #c678dd;">template</span>&gt;
+
+&lt;<span style="color: #c678dd;">script</span>&gt;
+import { Hello } from 'app/public/hello.js'
+import { ButtonCounter } from 'app/public/vue.js'
+import { lazyButtonCounter, renderButtonCounter } from 'app/public/button-counter.js'
+import { Test } from 'app/public/gambit-module-test.js'
+import { Loading } from 'quasar'
+import LogIndex from 'components/LogIndex.vue'
+
+import jsButtonCounter from 'app/public/test-js-component.js'
+import renderJsButtonCounter from 'app/public/test-js-component-render.js'
+
+export default {
+  name: 'PageIndex',
+  components: {
+    ButtonCounter,
+    jsButtonCounter,
+    lazyButtonCounter,
+    renderJsButtonCounter,
+    renderButtonCounter,
+    LogIndex
+  },
+  data () {
+    return {
+      tab: 'tests',
+      splitterModel: 20
+    }
+  },
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var scRun = false;
+      (async () =&gt; {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun, evalElement } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          evalElement('yay!!')
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=&gt; ' + val)
+      })()
+    }
+  }
+}
+&lt;/<span style="color: #c678dd;">script</span>&gt;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org3f6651a" class="outline-2">
+<h2 id="org3f6651a"><span class="section-number-2">12</span> <code>build.sh</code>: A simple build script</h2>
+<div class="outline-text-2" id="text-12">
+<div class="org-src-container">
+<pre class="src src-shell"><span style="color: #dcaeea;">_dir</span>=<span style="color: #51afef; font-weight: bold;">$</span><span style="color: #51afef; font-weight: bold;">(</span><span style="color: #51afef; font-weight: bold;">cd -P -- </span><span style="color: #51afef; font-weight: bold;">"$(</span><span style="color: #51afef; font-weight: bold;">dirname</span><span style="color: #51afef; font-weight: bold;"> -- "</span><span style="color: #51afef; font-weight: bold;">$</span><span style="color: #51afef; font-weight: bold;">0</span><span style="color: #51afef; font-weight: bold;">")</span><span style="color: #98be65;">"</span> &amp;&amp; <span style="color: #ECBE7B;">pwd</span> -P<span style="color: #51afef;">)</span>
+<span style="color: #ECBE7B;">echo</span> dir: $<span style="color: #dcaeea;">_dir</span>;
+<span style="color: #dcaeea;">_cd</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cd</span><span style="color: #98be65;"> $_dir/gx"</span>; <span style="color: #ECBE7B;">echo</span> $<span style="color: #dcaeea;">_cd</span> ; $<span style="color: #dcaeea;">_cd</span>;
+
+<span style="color: #c678dd;">_gxc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+    <span style="color: #dcaeea;">_givr</span>=<span style="color: #98be65;">"gxc -d . -S -static </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+ <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- Compiling $_givr"</span>; $<span style="color: #dcaeea;">_givr</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">1</span> ;
+<span style="color: #51afef;">}</span>
+<span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">""</span>
+
+<span style="color: #c678dd;">_gsc</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_js</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .scm<span style="color: #c678dd;">)</span>.js
+ <span style="color: #dcaeea;">_js</span>=<span style="color: #51afef; font-weight: bold;">`</span><span style="color: #51afef; font-weight: bold;">echo</span><span style="color: #51afef; font-weight: bold;"> $_js | sed 's/js__\(.*\)/\1/'`</span>
+ <span style="color: #dcaeea;">_statics</span>=<span style="color: #98be65;">"$_statics </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;">"</span>
+
+  <span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"--- compiling </span><span style="color: #a9a1e1;">$</span><span style="color: #dcaeea;">1</span><span style="color: #98be65;"> to $_js"</span>
+  gsc -target js -o  $<span style="color: #dcaeea;">_js</span> $<span style="color: #da8548; font-weight: bold;">1</span> || <span style="color: #51afef;">exit</span> <span style="color: #da8548; font-weight: bold;">2</span>; <span style="color: #ECBE7B;">echo</span>;
+<span style="color: #51afef;">}</span>
+
+<span style="color: #c678dd;">_comp</span> <span style="color: #51afef;">()</span> <span style="color: #51afef;">{</span>
+ <span style="color: #dcaeea;">_fn</span>=$<span style="color: #c678dd;">(</span><span style="color: #51afef; font-weight: bold;">basename</span> $<span style="color: #da8548; font-weight: bold;">1</span> .ss<span style="color: #c678dd;">)</span>
+ <span style="color: #dcaeea;">_st</span>=static/js__$<span style="color: #dcaeea;">_fn</span>.scm
+
+ _gxc $<span style="color: #da8548; font-weight: bold;">1</span>;
+ _gsc $<span style="color: #dcaeea;">_st</span>;
+ <span style="color: #51afef;">}</span>
+
+gxc -v syntax.ss
+_comp gxjs-fixes.ss
+_comp syntax.ss
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+<span style="color: #ECBE7B;">echo</span> <span style="color: #98be65;">"Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."</span>
+gsc -target js -o gxjs-link.js -link $<span style="color: #dcaeea;">_statics</span>
+
+<span style="color: #dcaeea;">_gxjs_rt</span>=<span style="color: #98be65;">'</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> gxjs-link.js gxjs-fixes.js syntax.js gxjs-init.js gxjs-rt.js gxjs-ffi.js &gt; gxjs.js'</span>; <span style="color: #ECBE7B;">echo</span> making exec: $<span style="color: #dcaeea;">_gxjs_rt</span>; bash -c <span style="color: #98be65;">"$_gxjs_rt"</span>;
+
+<span style="color: #ECBE7B;">cp</span> gxjs.js ../public/
+
+_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+<span style="color: #ECBE7B;">cp</span> vue.js hello.js gambit-module-test.js button-counter.js ../public
+
+_comp lazy-gambit-repl.ss
+<span style="color: #dcaeea;">_lazy</span>=<span style="color: #98be65;">"</span><span style="color: #98be65;">cat</span><span style="color: #98be65;"> lazy-gambit-repl.js </span><span style="color: #51afef; font-weight: bold;">$(</span><span style="color: #51afef; font-weight: bold;">gsc</span><span style="color: #51afef; font-weight: bold;"> -e '(display (path-expand "~~lib/_gambit.js")</span><span style="color: #98be65;">)')  &gt; gambit-repl.js"</span>
+<span style="color: #ECBE7B;">echo</span> Building the gambit repl: <span style="color: #98be65;">\"</span>$<span style="color: #dcaeea;">_lazy</span><span style="color: #98be65;">\"</span>; bash -c <span style="color: #98be65;">"$_lazy"</span>;
+<span style="color: #ECBE7B;">cp</span> gambit-repl.js ../public
+
+</pre>
+</div>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+<a href="https://vuejs.org/v2/guide/render-function.html">https://vuejs.org/v2/guide/render-function.html</a>
+</p></div></div>
+
+
+</div>
+</div></div>
+<div id="postamble" class="status">
+<p class="date">Date: 2020-11-27 Fri 00:00</p>
+<p class="author">Author: Drew Crampsie</p>
+<p class="date">Created: 2020-12-02 Wed 08:59</p>
+</div>
+</body>
+</html>

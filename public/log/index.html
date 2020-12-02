@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- 2020-11-25 Wed 11:52 -->
+<!-- 2020-12-02 Wed 08:55 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Log Files: Giv&rsquo;r and GTD!</title>
@@ -259,12 +259,36 @@ the entire gambit runtime.
 <p>
 Also of interest is the first <b>Vue.js</b> component created <a href="0002_Lazy-Dynamic-Module-Init.html#FirstVueGx">entirely in gerbil</a>.
 </p></li>
+
+<li><p>
+<a href="0003_More-run-time-and-more-vue.html">More Run Time, More Vue</a>.
+</p>
+
+<p>
+I futz with <code>g_scm2host</code> and <code>g_host2scm</code> to make them &ldquo;work&rdquo; with foreign
+objects. Now an alist can become a <b>JavaScript</b> object, but not <i>vice
+versa</i>.
+</p>
+
+<p>
+Using that enables a trivial <a href="0003_More-run-time-and-more-vue.html#jsFunctionAndThis"><code>js#function</code></a>, which allows a lexical <code>js#this</code>
+variable as well as a variable number of arguments totally unspecified, like <code>js</code>.
+</p>
+
+<p>
+Needing a way to both create and reference our foreign <code>jso</code>&rsquo;s, we do so.
+<a href="0003_More-run-time-and-more-vue.html#jsJsoRefAndRefSet"><code>js#jso</code> and <code>js#ref</code></a>
+</p>
+
+<p>
+Using that and a wee bit more we are able to port a <b>Vue</b> component&rsquo;s render
+function over to scheme in a near identical manner.
+</p></li>
 </ol>
 
-
-<div id="outline-container-org666118a" class="outline-2">
-<h2 id="org666118a">Notes</h2>
-<div class="outline-text-2" id="text-org666118a">
+<div id="outline-container-org7e34b70" class="outline-2">
+<h2 id="org7e34b70">Notes</h2>
+<div class="outline-text-2" id="text-org7e34b70">
 <p>
 This is just the very start but already has me very excited. Gerbil in/on the
 browser!
@@ -297,7 +321,7 @@ Relevant compile thingies. <a href="https://mailman.iro.umontreal.ca/pipermail/g
 <div id="postamble" class="status">
 <p class="date">Date: 2020-11-23 Mon 00:00</p>
 <p class="author">Author: Drew Crampsie</p>
-<p class="date">Created: 2020-11-25 Wed 11:52</p>
+<p class="date">Created: 2020-12-02 Wed 08:55</p>
 </div>
 </body>
 </html>

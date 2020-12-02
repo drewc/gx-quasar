@@ -67,6 +67,8 @@
             <div class="text-h4 q-mb-md">Tests</div>
             This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
             <js-button-counter></js-button-counter>
+            <render-js-button-counter></render-js-button-counter>
+            <render-button-counter></render-button-counter>
             <button-counter></button-counter>
             <lazy-button-counter></lazy-button-counter>
             <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
@@ -83,31 +85,33 @@
 <script>
 import { Hello } from 'app/public/hello.js'
 import { ButtonCounter } from 'app/public/vue.js'
-import { lazyButtonCounter } from 'app/public/button-counter.js'
+import { lazyButtonCounter, renderButtonCounter } from 'app/public/button-counter.js'
 import { Test } from 'app/public/gambit-module-test.js'
 import { Loading } from 'quasar'
 import LogIndex from 'components/LogIndex.vue'
 
 import jsButtonCounter from 'app/public/test-js-component.js'
+import renderJsButtonCounter from 'app/public/test-js-component-render.js'
 
 export default {
   name: 'PageIndex',
-  // components: { jsButtonCounter },
-  // components: { lazyButtonCounter, jsButtonCounter },
-  components: { ButtonCounter, jsButtonCounter, lazyButtonCounter, LogIndex },
+  components: {
+    ButtonCounter,
+    jsButtonCounter,
+    lazyButtonCounter,
+    renderJsButtonCounter,
+    renderButtonCounter,
+    LogIndex
+  },
   data () {
     return {
-      tab: 'index',
+      tab: 'tests',
       splitterModel: 20
     }
   },
   methods: {
     Hello (arg) {
       console.log(Hello)
-      // console.log(ButtonCounter)
-      // console.log(lazyButtonCounter)
-
-      window.btn = ButtonCounter
       if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
     },
     Test (arg) {
@@ -116,7 +120,6 @@ export default {
     },
     sourceCodeRun (id) {
       var scRun = false;
-      // return scRun
       (async () => {
         if (!scRun) {
           Loading.show()

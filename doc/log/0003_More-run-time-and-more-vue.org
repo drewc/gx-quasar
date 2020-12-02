@@ -1,0 +1,861 @@
+#+TITLE: More Run Time, More Vue
+#+DATE: [2020-11-27 Fri]
+
+One of the things I require is *Vue.js* components written in *Gerbil* Scheme
+and integrated with *Quasar*.
+
+In the past I've written a ~vue#component~ based on my own (previous)
+~js#plist->jso~. In this log I discovered exactly why I needed that and was able
+to rid myself of that need!.
+
+* Our own ~g_module_register~
+
+To lazy load our ~js~ *Gambit* modules the ~g_module_register~ function has been
+slightly re-written. We know from experience that function is defined at the
+start of an ~-exe~ or in the ~-link~ file so if this is added after that and
+before the rest, there you go.
+
+#+begin_src javascript :noweb-ref g_module_register
+g_module_name = function (module_descr) {
+  var temp = module_descr[0];
+  var name = temp[temp.length - 1].name;
+  return name;
+};
+
+g_module_init = function(module_descr) {
+  g_sp = -1;
+  g_stack[++g_sp] = void 0;
+  g_r0 = g_underflow;
+  g_nargs = 0;
+  g_trampoline(module_descr[4]);
+};
+
+gx_gambit_module_table = [];
+
+g_module_register = function (module_descr) {
+  // Keep track of all registered modules.
+  gx_gambit_module_table.push(module_descr);
+
+  if ( typeof g_glo['##program-descr'] === 'object' ) {
+    g_module_init(module_descr);
+  } else {
+    var temp = module_descr[0];
+    var name = temp[temp.length - 1].name;
+    var info = Object.prototype.hasOwnProperty.call(g_module_map,name) ? g_module_map[name] : null;
+    g_module_latest_registered = module_descr;
+    if (!(info === null || g_module_count === g_module_table.length)) {
+      var index = info.index;
+      var old = g_module_table[index];
+      g_module_table[index] = module_descr;
+      if (old === null) {
+        ++g_module_count;
+        if (g_module_count === g_module_table.length) {
+          g_glo["##program-descr"] = [g_module_table,null,false];
+          temp = g_module_table[g_module_table.length - 1][0];
+          g_glo["##vm-main-module-ref"] = temp[temp.length - 1];
+          g_sp = -1;
+          g_stack[++g_sp] = void 0;
+          g_r0 = g_underflow;
+          g_nargs = 0;
+          g_trampoline(g_module_table[0][4]);
+        }
+      }
+    }
+  }
+};
+
+#+end_src
+
+We also have a way to reset the module registry. We don't actually use it now (I don't think), but it comes in handy.
+
+#+begin_src javascript :noweb-ref g_module_registry_reset
+g_module_registry_reset = function () {
+  g_module_count = 0;
+  g_module_map = {};
+  g_module_table = null;
+  g_module_latest_registered = null;
+};
+#+end_src
+
+#+begin_src javascript :noweb-ref g_module_registry_init
+g_module_registry_init = function (link_info) {
+  var n = link_info.length;
+  var i = 0;
+  g_module_registry_reset();
+  g_module_table = new Array(n);
+  while (i < n) {
+    var info = link_info[i];
+    g_module_map[info.name] = info;
+    g_module_table[i] = null;
+    ++i;
+  }
+};
+#+end_src
+
+* ~G_Foreign~ in ~g_scm2host~ and ~g_host2scm~
+
+For some reason the upstream ~g_scm2host~ does not accept foreign types.
+
+
+In other (code) words :
+
+#+begin_src javascript
+bar = g_host2foreign(window);
+baz = g_scm2host(bar);
+// Uncaught scm2host error
+#+end_src
+
+Also, ~g_host2scm~ goes through the object and attempts to make an ~alist~ out
+of it. Unfortunatly, since a lot of objects recursively contain themselves, this
+fails a lot as well.
+
+Don't try this without the fixes. I've gotten "Paused before potenial out of
+memory crash" at the ~js~ *REPL* and stack blows for different attempts.
+
+#+begin_src javascript
+bat = g_host2scm(window);
+#+end_src
+
+
+We'll "fix" those and see how it goes.
+
+#+begin_src javascript :noweb-ref g_scm2host
+g_scm2host = function (obj) {
+  if (obj === void 0) {
+    return obj;
+  }
+  if (obj === null) {
+    return obj;
+  }
+  if (typeof obj === "boolean") {
+    return obj;
+  }
+  if (typeof obj === "number") {
+    return obj;
+  }
+  // this is what we add
+  if (obj instanceof G_Foreign) {
+    return g_foreign2host(obj);
+  }
+  if (obj instanceof G_Flonum) {
+    return obj.val;
+  }
+  if (obj instanceof G_ScmString) {
+    return obj.toString();
+  }
+  if (obj instanceof Array) {
+    return obj.map( g_scm2host );
+  }
+  if (obj instanceof G_U8Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_U16Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_U32Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_S8Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_S16Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_S32Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_F32Vector) {
+    return obj.elems;
+  }
+  if (obj instanceof G_F64Vector) {
+    return obj.elems;
+  }if (obj instanceof G_Pair) {
+    var jsobj = {};
+    var i = 0;
+    while (obj instanceof G_Pair) {
+      var elem = obj.car;
+      if (elem instanceof G_Pair) {
+        jsobj[g_scm2host(elem.car)] = g_scm2host(elem.cdr);
+      } else {
+        jsobj[i] = g_scm2host(elem);
+      }
+      ++i;
+      obj = obj.cdr;
+    }
+    return jsobj;
+  }
+  if (obj instanceof G_Structure) {
+    throw "scm2host error (cannot convert Structure)";
+  }
+  if (typeof obj === "function") {
+    return g_procedure2host(obj);
+  }
+  throw "scm2host error";
+};
+
+
+g_host2scm = function (obj) {
+  if (obj === void 0) {
+    return void 0;
+  }
+  if (obj === null) {
+    return null;
+  }
+  if (typeof obj === "boolean") {
+    return obj;
+  }
+  if (typeof obj === "number") {
+    if ((obj | 0) === obj && obj >= -536870912 && obj <= 536870911) {
+      return obj;
+    } else {
+      return new G_Flonum(obj);
+    }
+  }
+  if (typeof obj === "function") {
+    return g_host_function2scm(obj);
+  }
+  if (typeof obj === "string") {
+    return new G_ScmString(g_str2codes(obj));
+  }
+  if (obj instanceof Array) {
+    return obj.map( g_host2scm );
+  }
+  if (obj instanceof Uint8Array) {
+    return new G_U8Vector(obj);
+  }
+  if (obj instanceof Uint16Array) {
+    return new G_U16Vector(obj);
+  }
+  if (obj instanceof Uint32Array) {
+    return new G_U32Vector(obj);
+  }
+  if (obj instanceof Int8Array) {
+    return new G_S8Vector(obj);
+  }
+  if (obj instanceof Int16Array) {
+    return new G_S16Vector(obj);
+  }
+  if (obj instanceof Int32Array) {
+    return new G_S32Vector(obj);
+  }
+  if (obj instanceof Float32Array) {
+    return new G_F32Vector(obj);
+  }
+  if (obj instanceof Float64Array) {
+    return new G_F64Vector(obj);
+  }
+  // Here's the GX difference!
+  if (typeof obj === "object") {
+    // var alist = null;
+    // for (var key in obj) {
+    // alist = new G_Pair(new G_Pair(g_host2scm(key),g_host2scm(obj[key])),alist);
+    // }
+    // return alist;
+    return g_host2foreign(obj);
+  }
+  throw "host2scm error";
+};
+
+
+#+end_src
+
+Now it works.
+
+#+begin_src javascript
+bar = g_host2foreign(window);
+baz = g_scm2host(bar);
+//  Window {parent: Window, opener: null, top: Window, length: 0, frames: Window, …}
+#+end_src
+
+* ~gxjs-fixes.ss~
+
+Making it into an ~.scm~ file helps to compile it in a way that my head sees as
+normal. Since most/all of the others are first ~.ss~ files and our scripts will
+assume that, we'll do it that way as well.
+
+Perhaps something else even gets added to this file. We'll see.
+
+#+begin_src scheme :noweb yes :tangle "../../gx/gxjs-fixes.ss"
+
+(##inline-host-declaration #<<EOF
+{%g_module_register%}
+
+{%g_module_registry_reset%}
+
+{%g_module_registry_init%}
+
+{%g_scm2host%}
+
+EOF
+)
+#+end_src
+
+
+* Change the boot file into aync loading
+
+This way we can see that it is loading and not a blank page. It still loads
+almost instantly, but sometimes I add a lot more in there or it recurses
+indefinitely.
+
+
+#+begin_src javascript
+import { Loading } from 'quasar'
+
+export default ({ app, router, store, Vue }) => {
+  Loading.show()
+  console.log('router', router)
+  router.beforeEach((to, from, next) => {
+    (async () => {
+      await import('app/public/gxjs.js')
+      Loading.hide()
+      next()
+    })()
+  })
+}
+#+end_src
+
+* ~js#jso~ and ~js#ref~
+:PROPERTIES:
+:CUSTOM_ID: jsJsoRefAndRefSet
+:END:
+
+While the ~js#plist->jso~ and ~vue#component~ were needed to get to this point,
+now that we have the foreign objects going back and forth with ease, we can use
+it to make a simple ~js#jso~ constructor function.
+
+#+begin_src scheme :noweb-ref plist-and-jso
+(def (js#new-plist->jso plist)
+  (def alist [])
+  (let lp ((pl plist))
+    (if (null? pl)
+      (let ((jso ((lambda () (##inline-host-expression "(() => { foo = (@1@);  return g_host2foreign(g_scm2host(foo)); })();"
+                                            alist)))))
+        ;; (js#console.log jso)
+        jso)
+        (let* ((key (##car pl))
+               (key (if (or (keyword? key) (symbol? key))
+                      (##symbol->string key)
+                      key))
+               (val (##cadr pl))
+               (rest (##cddr pl)))
+        (set! alist (##cons (##cons key val) alist))
+        (lp rest)))))
+
+(def (js#jso . plist)
+  (js#new-plist->jso plist))
+#+end_src
+
+Now that we have a ~js#jso~, it would be nice to reference its contents.
+
+
+** ~js#ref~ and ~js#ref-set!~
+
+We can reference a jso and set it fairly easily.
+
+#+begin_src scheme :noweb-ref ref-and-set!
+(def (js#ref obj ref)
+  (##inline-host-expression "((obj, ref) => {
+   if (obj instanceof G_Foreign) {
+      obj = g_foreign2host(obj);
+   }
+return obj[ref];
+
+})(@1@, @2@);" obj ref))
+
+(def (js#ref-set! obj ref val)
+  (##inline-host-expression "((obj, ref, val) => {
+   if (obj instanceof G_Foreign) {
+      obj = g_foreign2host(obj);
+   }
+return (obj[ref] = val);
+
+})(@1@, @2@, @3@);" obj ref val))
+#+end_src
+
+* ~js#function~, Our first syntax.
+:PROPERTIES:
+:CUSTOM_ID: jsFunctionAndThis
+:END:
+
+Now that we have the foreign objects, which I think of as ~*pointers~ really, or
+wrappers to pointers, but I digress... now that we have
+~g_[host|scm]2[scm|host]~ working with foreign types making a ~js#function~ that
+interacts with the browser is fairly trivial.
+
+Declaring ~js#this~ is really the big idea. We need it to do the entire point
+behind this log.
+
+#+begin_src scheme  :tangle ../../gx/syntax.ss
+namespace: #f
+(export js#function js#this)
+
+(def js#this (##inline-host-expression "window;"))
+
+(defsyntax (js#function stx)
+  (syntax-case stx ()
+    ((macro _args body ...)
+     (let* ((args (syntax->datum #'_args))
+            (binds (let lp ((bs args) (n 0))
+                     (if (null? bs) bs
+                         (cons (list (car bs) `(##vector-ref js#arguments ,n))
+                               (lp (cdr bs) (+ n 1)))))))
+       (with-syntax ((lbinds (datum->syntax #'macro binds))
+                     (this
+                      (datum->syntax #'macro 'js#this))
+                     (args (datum->syntax #'macro 'js#arguments)))
+           #'(let ((fn (lambda (this args) (let lbinds body ...))))
+               (js#js->foreign (##inline-host-expression
+                              "function (...args) { let scmProc = g_scm2host(@1@);
+  return scmProc(this, args);
+   };" fn))))))))
+#+end_src
+
+
+
+* ~##number->string~~, a needed prim.
+
+#+begin_src scheme :noweb-ref number->string
+(def (##number->string n)
+  (##inline-host-expression "(() => { n = g_scm2host(@1@) ; return g_host2scm(n.toString()); })();" n))
+#+end_src
+
+* ~js#++~, really just to make it short.
+
+In *Common Lisp* there's ~INCF~, "used for incrementing [...] the value of
+place". We'll create a ~js#++~ macro just to line up with our recreation which is coming soon.
+
+#+begin_src scheme :noweb-ref js-++
+(defsyntax (js#++ stx)
+  (syntax-case stx ()
+    ((macro place number)
+       #'(let ((val place))
+           (set! place (+ val number))))
+    ((macro place)
+     #'(macro place 1))))
+#+end_src
+
+
+* *Vue.js* Render Functions and Gerbil
+
+Currently our only real component looks like this.
+
+#+begin_src scheme :noweb-ref button-counter-with-template
+(vue#component
+ name: "button-counter"
+ data: [count: 0]
+ template: '|<button v-on:click="count++">You clicked me {{ count }} times.</button>|)
+#+end_src
+
+In reality that's not a lot of scheme. Vue contains a compiler which takes
+templates and creates a render function[fn:vrf]. Here's what I think it does.
+
+#+begin_src javascript :untangle ../../public/test-js-component-render.js
+export default {
+  name: 'ButtonCounter',
+  data: function () {
+    return {
+      count: 0
+    }
+  },
+  render: function (createElement) {
+    return createElement(
+      'button',
+      {
+        on: {
+          click: () => { this.count++ }
+        }
+      },
+        'Render: You clicked me ' + this.count + ' times.');
+  }
+}
+#+end_src
+
+Let's try a direct translation. This is possible! It took a wee bit of a lot to
+get here.
+
+#+begin_src scheme :noweb-ref button-counter-render
+(js#jso
+ name: "ButtonCounter"
+ data: (lambda _ (js#jso count: 0))
+ render:
+ (js#function (createElement)
+  (createElement
+   "button"
+   (js#jso
+    on: (js#jso
+         click: (lambda _ (js#++ (js#ref js#this count:)))))
+   (##string-append "Scheme Render?: You clicked me "
+                    (##number->string (js#ref js#this count:)) " times"))))
+#+end_src
+
+
+** /File/ ~button-counter.ss~
+#+begin_src scheme :tangle ../../gx/button-counter.ss :noweb yes
+(import :js/syntax)
+
+{%plist-and-jso%}
+
+{%ref-and-set!%}
+
+{%number->string%}
+
+{%js-++%}
+
+(def render-button-counter
+  {%button-counter-render%})
+
+(def render-button-counter-js
+  (vue#component
+   name: "ButtonCounter"
+   data: [count: 0]
+   render: #;(lambda (create-element) (create-element "button" "here"))
+   (js#js->foreign (##inline-host-expression "function (createElement) {
+    return createElement(
+      'button',
+      {
+        on: {
+          click: () => { this.count++ }
+        }
+      },
+        'Gerbil Render: You clicked me ' + this.count + ' times.');
+  }"))
+   ))
+
+(##inline-host-statement
+ "exports.lazyButtonCounter = (@1@);
+  exports.renderButtonCounter = g_scm2host(@2@);
+  window.renb = exports.renderButtonCounter;
+   console.log('lazy init!! button!!');"
+(vue#component
+  name: "button-counter"
+  data: [ count: 0 ]
+  template: '|<button v-on:click="count++"> LAZYYY!!!! You clicked me {{ count }} times.</button>|)
+
+  render-button-counter)
+#+end_src
+
+* Putting it all together
+
+Now to embed everything into a ~:js~ *Gerbil* package.
+
+#+begin_src scheme :tangle ../../gx/gerbil.pkg
+(package: js)
+#+end_src
+
+We'll have 3 steps.
+
+ 1) ~gxjs~ :: Our basic run time
+ 2) All the lazy modules
+ 3) The gambit repl (done the old way)
+
+Our ~_comp~ shell function takes a ~.ss~, makes a ~static/.scm~ and compiles that to a ~.js~.
+
+#+begin_src shell :noweb-ref compiler-shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _js=`echo $_js | sed 's/js__\(.*\)/\1/'`
+ _statics="$_statics $1"
+
+  echo "--- compiling $1 to $_js"
+  gsc -target js -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/js__$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+#+end_src
+
+** Build ~gxjs~
+
+#+begin_src shell :noweb-ref build-gxjs
+gxc -v syntax.ss
+_comp gxjs-fixes.ss
+_comp syntax.ss
+_comp gxjs-init.ss
+_comp gxjs-rt.ss
+_comp gxjs-ffi.ss
+
+echo "Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."
+gsc -target js -o gxjs-link.js -link $_statics
+
+_gxjs_rt='cat gxjs-link.js gxjs-fixes.js syntax.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+
+cp gxjs.js ../public/
+#+end_src
+
+** Build the modules
+
+1) vue
+2) hello
+3) gambit-module-test
+4) button-counter
+
+#+begin_src shell :noweb-ref build-modules
+_comp vue.ss
+_comp hello.ss
+_comp gambit-module-test.ss
+_comp button-counter.ss
+
+cp vue.js hello.js gambit-module-test.js button-counter.js ../public
+#+end_src
+
+*** ~gambit-module-test.ss~: A module not loaded in the gambit program
+
+#+begin_src scheme :tangle ../../gx/gambit-module-test.ss
+(##inline-host-statement
+ "exports.Test = (arg) => {
+   var hello_fn = g_scm2host(@1@)
+   hello_fn('Test' + arg)
+}
+
+console.log('init gambit-module-test');
+
+"
+ (lambda (str)
+   (let* ((mod (##inline-host-expression "g_module_name(gx_gambit_module_table[1]);")))
+     (js#console.log mod)
+     (js#alert str))))
+#+end_src
+
+** Now the full gambit repl
+
+This time we try without the module reset/init.
+
+#+begin_src shell :noweb-ref build-repl
+_comp lazy-gambit-repl.ss
+_lazy="cat lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
+echo Building the gambit repl: \"$_lazy\"; bash -c "$_lazy";
+cp gambit-repl.js ../public
+#+end_src
+
+
+#+begin_src scheme :tangle ../../gx/lazy-gambit-repl.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.evalElement = (arg) => {
+  alert('Lazy? This is working without the reset Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (g-sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "
+g_sourceCodeRun = g_scm2host(@1@);
+exports.sourceCodeRun = g_sourceCodeRun;" g-sourceCodeRun)
+
+#+end_src
+
+* ~Index.vue~
+
+Going to add the log files as html in order to have something useful to look at
+live.
+
+#+begin_src vue :tangle ../../src/pages/Index.vue :noweb yes
+<template>
+  <q-page>
+    <div>
+      <q-splitter
+        v-model="splitterModel"
+        >
+
+        <template v-slot:before>
+        <q-tabs
+          v-model="tab" no-caps
+          vertical
+          class="text-teal"
+        >
+          <q-tab name="index" icon="loyalty" label="GerbilJS" />
+          <q-tab name="repl" icon="keyboard" label="REPL" />
+          <q-tab name="weblog" icon="format_list_numbered" label="Log Files" />
+          <q-tab name="tests" icon="verified" label="Tests" />
+        </q-tabs>
+      </template>
+
+      <template v-slot:after>
+        <q-tab-panels
+          v-model="tab"
+          animated
+          swipeable
+          vertical
+          transition-prev="jump-up"
+          transition-next="jump-up"
+        >
+          <q-tab-panel name="index">
+            <span class="text-h4">GxQuasar</span>
+            <span class='text-subtitle2'>An overview of Gerbil Scheme in JavaScript</span>
+            <hr>
+            <p> Developing Web Applications takes knowledge of a lot of
+            languages.</p>
+            <p>Centralizing on a lisp dialect, in
+            particular <a href="https://cons.io"><b>Gerbil</b>: a meta-dialect
+            of Scheme</a>, makes things a lot easier. </p>
+
+            <p>To have a look at the code, see the <code>./gx/</code> directory in <a href="https://github.com/drewc/gx-quasar">the github repo. </a> </p>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="repl">
+            <div class="text-h4 q-mb-md">ReadEvalPrint(actually alert, then wait, before)Loop</div>
+
+            This is currently just a <a href="http://gambitscheme.org/">Gambit
+            Scheme</a> REPL. Gambit is the language that Gerbil
+            currently <a href="https://en.wikipedia.org/wiki/Source-to-source_compiler">transpiles</a>
+            to which itself can transpile to JavaScript.
+
+            <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+              (list "123" 456 #(7 8 9))
+            </div>
+
+            <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+            <hr>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="weblog">
+            <div class="text-h4 q-mb-md">Log Files</div>
+            <log-index></log-index>
+          </q-tab-panel>
+
+          <q-tab-panel name="tests">
+            <div class="text-h4 q-mb-md">Tests</div>
+            This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
+            <js-button-counter></js-button-counter>
+            <render-js-button-counter></render-js-button-counter>
+            <render-button-counter></render-button-counter>
+            <button-counter></button-counter>
+            <lazy-button-counter></lazy-button-counter>
+            <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
+            <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+          </q-tab-panel>
+        </q-tab-panels>
+      </template>
+
+    </q-splitter>
+  </div>
+  </q-page>
+</template>
+
+<script>
+import { Hello } from 'app/public/hello.js'
+import { ButtonCounter } from 'app/public/vue.js'
+import { lazyButtonCounter, renderButtonCounter } from 'app/public/button-counter.js'
+import { Test } from 'app/public/gambit-module-test.js'
+import { Loading } from 'quasar'
+import LogIndex from 'components/LogIndex.vue'
+
+import jsButtonCounter from 'app/public/test-js-component.js'
+import renderJsButtonCounter from 'app/public/test-js-component-render.js'
+
+export default {
+  name: 'PageIndex',
+  components: {
+    ButtonCounter,
+    jsButtonCounter,
+    lazyButtonCounter,
+    renderJsButtonCounter,
+    renderButtonCounter,
+    LogIndex
+  },
+  data () {
+    return {
+      tab: 'tests',
+      splitterModel: 20
+    }
+  },
+  methods: {
+    Hello (arg) {
+      console.log(Hello)
+      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
+    },
+    Test (arg) {
+      console.log(Test)
+      if (typeof Test === 'function') { Test('Test: ' + arg) }
+    },
+    sourceCodeRun (id) {
+      var scRun = false;
+      (async () => {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun, evalElement } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          evalElement('yay!!')
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=> ' + val)
+      })()
+    }
+  }
+}
+</script>
+#+end_src
+
+* ~build.sh~: A simple build script
+
+#+begin_src shell :tangle ../../build.sh  :shebang "#!/usr/bin/env bash" :noweb yes
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+echo dir: $_dir;
+_cd="cd $_dir/gx"; echo $_cd ; $_cd;
+
+{%compiler-shell%}
+
+{%build-gxjs%}
+
+{%build-modules%}
+
+{%build-repl%}
+
+#+end_src
+
+#+RESULTS:
+
+
+* Commit, build, commit, deploy
+
+First we actually commit this log and what it needs. I don't want to lose days of work you know! :)
+
+#+begin_src shell
+LD=$CC quasar build
+git stash
+git checkout gh-pages
+git pull --rebase
+git rm -rf .
+rsync -av dist/spa/ .
+git add css/ fonts/ js/ log/*.html index.html
+git commit -m "Update gh-pages for log 0003 again fscking git"# --amend
+git push origin gh-pages && git checkout main && git stash pop
+#+end_src
+* Footnotes
+
+[fn:vrf] https://vuejs.org/v2/guide/render-function.html
+
+# Local Variables:
+# org-babel-noweb-wrap-start: "{%"
+# org-babel-noweb-wrap-end: "%}"
+# End:
