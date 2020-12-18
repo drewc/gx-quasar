@@ -1,0 +1,5110 @@
+#+TITLE: Render an OrgMode document: Nested Components
+#+DATE: <2020-12-02 Wed>--<2020-12-18 Fri>
+#+STARTUP: inlineimages
+#+AUTHOR: Drew C
+
+# C-c C-x C-v to toggle inline inlineimages
+
+To export an *OrgMode*[fn:o] document and use *Gerbil*[fn:g] to render it in
+*Javascript* ended up being the results of this log. If you are reading it
+online as a web page it likely contains start of the engine that ran in order to
+create the document you are viewing.
+
+Click on this header to see more.
+
+* Introduction
+
+It all started because I needed a task to learn more about *Vue.js*[fn:vue] in
+order to go further with my runtime.
+
+In *Vue.js* the main players are components. In the previous logs we were able
+to create them and to make them create themselves. Now it's time to nest them,
+and have them use others.
+
+Because I generally use *OrgMode* to store my "source" and "documentation",
+[[#OrgModeAndJson][exporting it to ~json~]] seemed like a good start.
+
+Well, I could not finish the log until it was exported and viewable.
+
+Here is the *Gerbil* code that renders it.
+
+#+begin_src scheme :noweb-ref renderOrgDoc
+(def (renderOrgDoc this h)
+  (def doc (js#ref this document:))
+  (def comps (js#ref this components:))
+  (def contents (vector-copy (js#ref doc contents:)))
+  (def summary-child (vector (vector-ref contents 0)))
+  (def summary
+    (h "summary"
+     (vector
+      (h (find-org-node-component
+          doc key: 'documentProperties comps)
+         { props: { document: doc } })
+      (h "hr")
+      (h "div"
+         (vector
+          (h "big" (org#org-value->child h summary-child comps))))
+      (h "hr"))))
+  (def TOC (h OrgDocTOC { props: { document: doc } } ""))
+  (def details
+    (begin
+      ;; Get the summary out of the contents
+      (set! (vector contents 0) "")
+      ;; Display the document.
+      (vector summary TOC (h "div" (org#org-value->child h contents comps)))))
+
+  (h "div" { style: { border: "1px dotted black" padding: "2em" } }
+     (vector (h "details" details))))
+#+end_src
+
+
+
+
+* Adding them to ~src/components~
+
+Since we want to place the components in ~src/components~ we need to take care
+of linting. From this point on, any file that ends with ~.gx.js~ will not be
+linted.
+
+#+begin_src javascript
+      extendWebpack (cfg) {
+        cfg.module.rules.push({
+          enforce: 'pre',
+          test: /\.(js|vue)$/,
+          loader: 'eslint-loader',
+          exclude: [ /(node_modules|public)/, /\.gx\.js$/ ]
+        })
+      }
+#+end_src
+
+Now a component to try it out.
+
+#+begin_src scheme :tangle "../../gx/components/ButtonCounter.gx.ss" :mkdirp yes
+(import :js/syntax)
+(def ButtonCounter
+  (js#jso
+   name: "ButtonCounter"
+   data: (lambda _ (js#jso count: 0))
+   render:
+   (js#function (createElement)
+     (createElement
+      "button"
+      (js#jso
+       on: (js#jso
+            click: (lambda _ (js#++ (js#ref js#this count:)))))
+      (##string-append "Component .gx.js! You clicked me "
+                       (##number->string (js#ref js#this count:)) " times")))))
+
+(##inline-host-statement "// alert('here!');
+  exports.ButtonCounter = g_scm2host((@1@));" ButtonCounter)
+#+end_src
+
+* Make ~js#ref~ and ~js#ref-set!~ a little more robust
+
+In ~js~ there's a ~lot.of.connecting.items()~. Right now we ~(only have one)~ to
+reference. That needs taken care of.
+
+This uses ~##apply~ which I cribbed from *Gambit's* ~_univlib.scm~. It works.
+
+#+begin_src scheme :noweb-ref js#ref
+(def (ref obj key . keys)
+  (let ((v
+         (##inline-host-expression "((obj, ref) => {
+   if (obj instanceof G_Foreign) {
+      obj = g_foreign2host(obj);
+   } else if (typeof obj != 'object') {
+     return;
+   };
+ return g_host2scm(obj[ref]);
+
+})(@1@, @2@);" obj key)))
+    (if (null? keys) v
+        (##apply ref v keys))))
+#+end_src
+
+#+begin_src scheme :noweb-ref js#ref-set!
+(def (ref-set! obj ref . refs-and-val)
+  ;; (js#console.log 1765 obj ref (null? (cdr refs-and-val))(car refs-and-val) (cdr refs-and-val))
+  (if (null? (cdr refs-and-val))
+      (##inline-host-expression "((obj, ref, val) => {
+   if (obj instanceof G_Foreign) {
+      obj = g_foreign2host(obj);
+   }
+
+   if (val instanceof G_Foreign) {
+      val = g_foreign2host(val);
+   }
+ // if (typeof ref !== 'number') { console.log('setting', obj, 'key', ref, 'to', val) };
+ obj[ref] = val;
+ return g_host2scm(val);
+
+})(@1@, @2@, @3@);" obj ref (car refs-and-val))
+      ;; We want an object to set something in
+      (let* ((nobj (js#ref obj ref))
+             (nobj (if (js#undefined? nobj)
+                    (js#ref-set! obj ref (js#jso (car refs-and-val) nobj))
+                    nobj)))
+        ;; (js#console.log 765 obj ref nobj)
+        (apply js#ref-set! nobj refs-and-val))))
+
+
+#+end_src
+
+* ~OrgNodeTest~? Nested, functional, here we go.
+:PROPERTIES:
+:CUSTOM_ID: OrgNodeTest
+:END:
+
+Let us say we have an object, say a paragraph. Within that paragraph there could
+be other "nested" object, like say a *bold* section.
+
+Having those two work together as seperate components is one thing. Having those
+three or four work togther, that is to say different *bold* components for a
+different paragraph rendering, yes, that'll do, then we can see how different
+components can come together to create a rendered document.
+
+Organizing that together is an intented pun. Here is a *JSON* export of an Org
+Mode paragraph[fn:oxjson] that we'll make into a component document.
+
+#+begin_src json :tangle ../../public/test-org-pb.js
+export default  {
+  "$$data_type": "org-node",
+  "type": "paragraph",
+  "ref": "org8647194",
+  "properties": {
+    "post-blank": 0,
+    "post-affiliated": 54
+  },
+  "contents": [
+    "In ",
+    {
+      "$$data_type": "org-node",
+      "type": "bold",
+      "ref": "orgfa5b96b",
+      "properties": {
+        "post-blank": 1
+      },
+      "contents": [
+        "Vue.js"
+      ]
+    },
+    "the main players are components. In the previous logs we were able\nto create them and to make them create themselves. Now it's time to nest them,\nand have them use others.\n"
+  ]
+}
+#+end_src
+
+** ~OrgNodeTest~
+
+The first component I see is an ~OrgNode~. We'll start with a simple first test.
+
+So learning a bit more about components, ~"type":~, ~"ref":~ /et al/ could be
+component properties but ~[Vue warn]: "ref" is a reserved attribute and cannot
+be used as component prop.~.
+
+So, we'll made a node (component) have a node (object).
+
+Beyond that, for the first test, simply make a string out of the contents.
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgNodeFirstTest.gx.ss :mkdirp yes
+namespace: OrgNodeFirstTest
+(import :js/syntax)
+
+(def (node-contents->string node)
+  (let* ((contents (js#ref node contents:))
+         (str (##apply ##string-append
+                (map (lambda (c) (if (string? c) c (node-contents->string c)))
+                     (##vector->list contents))))
+         (post (js#ref node properties: post-blank:)))
+    (if (and (##number? post) (> post 0))
+      (##string-append str (##make-string post #\space))
+      str)))
+
+(def OrgNodeFirstTest
+  (js#jso
+   props: #( "node" )
+   render: (js#function (h)
+            (let ((node (js#ref js#this node:)))
+              (h "strong" (node-contents->string node))))))
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgNodeFirstTest" OrgNodeFirstTest)
+#+end_src
+
+#+CAPTION: This is also the first caption!
+#+NAME:  screenshot:first-test
+[[./0004_first-test.png]]
+
+Awesome!
+
+** Functional Components: ~OrgNodeSecondTest~
+
+Really, our ~OrgNodeFirstTest~ does very little, and "we can mark components as
+functional, which means that they’re stateless (no reactive data) and
+instanceless (no this context)."[fn:vuerf].
+
+With functional components a second argument, ~context~ is added to the render
+function.
+
+#+begin_quote
+Everything the component needs is passed through context, which is an object containing:
+
+ - props :: An object of the provided props
+ - children :: An array of the VNode children
+ - slots :: A function returning a slots object
+ - scopedSlots :: (2.6.0+) An object that exposes passed-in scoped slots. Also exposes normal slots as functions.
+ - data :: The entire data object, passed to the component as the 2nd argument of createElement
+ - parent :: A reference to the parent component
+ - listeners :: (2.3.0+) An object containing parent-registered event listeners. This is an alias to data.on
+ - injections :: (2.3.0+) if using the inject option, this will contain resolved injections.
+
+— https://vuejs.org/v2/guide/render-function.html#Functional-Components
+#+end_quote
+
+Those version numbers mean something. We're there though!
+
+#+begin_src shell
+quasar info |grep vue
+  vue - 2.6.12 -- Reactive, component-oriented view layer for modern web interfaces.
+  vue-router - 3.2.0 -- Official router for Vue.js 2
+  vuex - 3.5.1 -- state management for Vue.js
+#+end_src
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgNodeSecondTest.gx.ss :mkdirp yes
+(import :js/syntax)
+
+(def OrgNodeSecondTest
+  (js#jso
+   functional: #t
+   render: (js#function (h c)
+             ;(js#console.log c)
+            (let ((node (js#ref c props: node:)))
+              (h "strong" (OrgNodeFirstTest#node-contents->string node))))))
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgNodeSecondTest" OrgNodeSecondTest)
+#+end_src
+
+That works great. On to the next step.
+
+
+** ~OrgNodeThirdTest~: paragraph = p, bold = strong?
+In our simple test org node there's a ~type:~ property. Right now it has ~bold~
+and ~paragraph~ which, strangely enough, have similar *HTML* elements.
+
+But I'm willing to bet there are more ~type:~'s in a ~.org~ file.
+
+So we'll make an unknown type element which simply displays the node JSON.
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgNodeThirdTest.gx.ss :mkdirp yes
+namespace: org
+(import :js/syntax)
+
+(def (optarg a (b 1)) (+ a b))
+
+(def OrgNodeUnknown
+  (js#jso
+   functional: #t
+   render:
+   (js#function
+    (h c)
+    (def node (js#ref c props: node:))
+    ;(js#console.log (optarg 1))
+    ;(js#alert (optarg 1))
+    (h "code"
+       (##inline-host-expression
+        "((jso) => { return g_host2scm( JSON.stringify(jso) )})(g_scm2host(@1@))" node)))
+   ))
+
+(def OrgNodeThirdTest
+  (js#jso
+   functional: #t
+   render: (js#function (h c)
+            (def node (js#ref c props: node:))
+            (h OrgNodeUnknown (js#jso props: (js#jso node: node))))))
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgNodeThirdTest" OrgNodeThirdTest)
+#+end_src
+
+
+It works well!
+
+#+CAPTION: This third test just shows json.
+                 [[./0004_third-test.png]]
+
+** ~OrgNodeFourthTest~: paragraph = p, bold = strong!
+
+We do actually the elements for these two. For that reason we'll have an object
+that has all the known element.
+
+#+begin_src scheme :noweb-ref forth-comps
+(def org-node-default-components
+  (js#jso paragraph: "p" bold: "strong" unknown: org#OrgNodeUnknown))
+#+end_src
+
+A function that returns the correct element or component is a good idea. Having
+different ones passed as a property is possible.
+
+#+begin_src scheme :noweb-ref org-node-component
+(def (org-node-component node comps defaults: (defaults org-node-default-components)
+                         (fail-key unknown:))
+  (def type (js#ref node type:))
+  (def (comp? t) (and t (not (js#undefined? t))))
+  (let* ((comp (and (comp? comps)
+                    (js#ref comps type)))
+         (comp (or (and (comp? comp) comp)
+                   (js#ref defaults type)))
+         (comp (or (and (comp? comp) comp)
+                   (js#ref comps fail-key)))
+         (comp (or (and (comp? comp) comp)
+                   (js#ref defaults fail-key)))
+         (comp (or (and (comp? comp) comp)
+                   org#OrgNodeUnknown)))
+  ;(js#console.log 9876 defaults (js#scm->js comp))
+    comp))
+#+end_src
+
+Now a render function that renders a node item and its contents.
+
+#+begin_src scheme :noweb-ref render-org-node
+(def (render-org-node h node components)
+  (def nodeComponent (org-node-component node components))
+  (def contents (js#ref node contents:))
+  (def post-blank (js#ref node properties: post-blank:))
+  (def pb (##vector (##make-string post-blank #\space)))
+  (def children (vector-map
+                 (lambda (n) (if (##string? n) n
+                                 (render-org-node h n components)))
+                 (##vector-append contents pb)))
+   ;(js#console.log post-blank node (js#scm->js pb) (##vector-append children pb))
+  (h nodeComponent (js#jso props: (js#jso node: node components: components))
+     children))
+#+end_src
+
+And another render function that renders an OrgNode component using its node.
+
+#+begin_src scheme :noweb-ref renderOrgNode
+(def (renderOrgNode createElement context)
+  (def props (js#ref context props:))
+  (def node (js#ref props node:))
+  (def components (js#ref props components:))
+  (render-org-node createElement node components))
+#+end_src
+
+What's found as really nice about functional components is there is no ~this~ so
+~js#function~ is not required.
+
+#+begin_src scheme :noweb-ref OrgNodeFourthTest
+(def OrgNodeFourthTest (js#jso functional: #t render: renderOrgNode))
+#+end_src
+
+The result is very nice and starts to look like a document.
+
+
+#+CAPTION: The fourth result is document-like
+                 [[./0004_fourth-test.png]]
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgNodeFourthTest.gx.ss :noweb yes :exports none
+namespace: org
+(import :js/syntax)
+
+{%forth-comps%}
+
+{%org-node-component%}
+
+{%render-org-node%}
+
+{%renderOrgNode%}
+
+{%OrgNodeFourthTest%}
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgNodeFourthTest" OrgNodeFourthTest)
+#+end_src
+
+** Conclusion
+
+Those functional components, is it turns out, are a wonderful way to go about it
+using a language that itself is very "functional", as it were. It really helped to see how to move forward. Which we will!
+
+* *Org Mode* and ~json~
+:PROPERTIES:
+:CUSTOM_ID: OrgModeAndJson
+:END:
+
+As we [fn:rwe] develop a ~gxjs~ system almost everything is logged as a literate
+program. I'd love to publish those logs as a part of this application as they
+are both relevant and quite useful to expand our programming skills.
+
+Those files are ~.org~, AKA [[https://orgmode.org/][Org Mode]]. *Org Mode* is in *Emacs Lisp*, we are in
+*Gerbil Scheme*, which compiles to *Gambit Scheme* which then compiles to
+*JavaScript*.
+
+That's wee bit of a headache waiting to happen, but there is [[https://github.com/jlumpe/ox-json][ox-json]], a "JSON
+export back end for Emacs Org mode". The use of which was hinted at in
+[[#OrgNodeTest][~OrgNodeTest~]].
+
+Phew! That takes care of that problem. We'll simply add a *Shell Script* that
+uses *Emacs* to export an *Org Mode* file to ~JSON~ and avoid *Scheme*! Because
+after al lthe entire point of this operation is to avoid scheme, especially
+*Gerbil*, and use other languages, am I right?
+
+#+begin_src emacs-lisp :tangle install-ox-json.el
+(require 'package)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
+(package-refresh-contents)
+(package-install 'ox-json)
+#+end_src
+
+#+begin_src emacs-lisp :tangle init-export.el
+(package-initialize)
+(require 'ox-json)
+#+end_src
+
+#+begin_src shell :tangle export-log.sh :shebang "#!/usr/bin/env bash"
+if [[ -z $1 ]] ; then echo "Logfile required" ; exit 1; fi
+_export_file=$(readlink -f $1)
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+_to_dir=${2:-"$_dir/../../public/log"}
+
+
+ls -d $_to_dir || mkdir -p $_to_dir
+
+echo Exporting $_export_file to a js in $_to_dir
+
+cd $_dir;
+
+_add_ox () {
+ ls ox-json* || emacs --batch --eval "(setq package-user-dir \"`pwd`\")"\
+     -l ./install-ox-json.el --kill
+}
+_js_export () {
+  emacs $1 --eval "(setq package-user-dir \"`pwd`\")" -l ./init-export.el \
+      --batch -f ox-json-export-to-file --kill
+}
+
+_export_log () {
+    _log=$1
+    _logdir=$(dirname $_log)
+    _fn=$(basename $_log .org)
+    _json=$_logdir/${_fn}.json
+    _js=$_to_dir/${_fn}.js
+
+    _add_ox
+    _js_export $_log
+
+    echo creating $_js;
+    echo export default $_json "->" $_js;
+
+    echo -n "export default " > $_js
+    cat $_json >> $_js;
+
+    echo "Removing" $_json;
+    # rm $_json
+
+ }
+
+_export_log $_export_file
+#+end_src
+
+Now we can simply export all of our logs as our exported *JSON* *OrgMode*
+documents, weaved to perfection.
+
+#+begin_src shell :tangle export-all-logs.sh :shebang "#!/usr/bin/env bash"
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+cd "$_dir"
+find . -name '*.org' -exec ./export-log {} \;
+_cp="cp *.png ../../public/log" ; echo $_cp; $_cp;
+#+end_src
+
+* ~OrgDoc~, ~OrgNode~ and friends
+
+We are so very close to having a document transformed, AKA *weaved*[fn:lwf],
+from our source code to *HTML* through a lot of steps.
+
+Our ~OrgNode~ becomes very simple.
+
+#+begin_src scheme :noweb-ref OrgNode
+(def OrgNode (js#jso functional: #t render: org#renderOrgNode))
+#+end_src
+
+Yet, a document contains many nodes of different types, so, it's time to see
+what they are.
+
+** ~OrgDocFirstTest~: What are the node types?
+
+To start with, a list of all the ~type:~'s.
+
+#+begin_src scheme :noweb-ref all-types
+(def (all-types doc)
+  (def types [])
+  (def (cs n) (##vector->list (js#ref n contents:)))
+  (let lp ((ns (cs doc)))
+   ;; (js#console.log (js#scm->js "types contets") ns)
+    (if (not (null? ns))
+      (let ((n (car ns))
+            (rst (cdr ns)))
+      ;;  (js#console.log (js#scm->js "node") n)
+        (if (not (##string? n))
+          (begin (set! types (cons (js#ref n type:) types))
+                 (lp (cs n))))
+        (lp rst))))
+  (reverse (##delete-duplicates types)))
+#+end_src
+
+Make the list into an, ummmm... list. Unordered list.
+
+#+begin_src scheme :noweb-ref list->ul
+(def (list->ul h lst)
+  (def <lis> (##map (cut h "li" <>) lst))
+  (h "ul" (##list->vector <lis>)))
+#+end_src
+
+A render function tops it off.
+
+#+begin_src scheme :noweb-ref renderOrgDocFirstTest
+(def (renderOrgDocFirstTest h c)
+  (def doc (js#ref c props: document:))
+  ;; (js#console.log (js#scm->js (all-types doc)))
+  (list->ul h (all-types doc)))
+#+end_src
+
+The component becomes as simple as last time.
+
+#+begin_src scheme :noweb-ref OrgDocFirstTest
+(def OrgDocFirstTest (js#jso functional: #t render: renderOrgDocFirstTest))
+#+end_src
+
+And our test now says what we need to develop to make a nice weaving.
+
+
+#+CAPTION: A list of "types for org nodes"
+                 [[./0004_first_doc_test.png]]
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgDocFirstTest.gx.ss :noweb yes :exports none
+(import :js/syntax)
+
+{%all-types%}
+
+{%list->ul%}
+
+{%renderOrgDocFirstTest%}
+
+{%OrgDocFirstTest%}
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgDocFirstTest" OrgDocFirstTest)
+
+#+end_src
+
+** *Org* ~properties:~ goes beyond contents
+
+Before we get into contents more completely it's time to shake hands with the
+document that contains them.
+
+Just like an ~"org-node"~ an ~"org-document"~ has ~properties:~.
+
+#+begin_src json
+{
+    "$$data_type": "org-document",
+    "properties": {
+        "title": [
+            "Nested Components"
+        ],
+        "filetags": [],
+        "author": [
+            "Drew Crampsie"
+        ],
+        "creator": "Emacs 28.0.50 (Org mode 9.4)",
+        "date": [
+            {
+                "$$data_type": "org-node",
+                "type": "timestamp",
+                "ref": "orgf20fdcd",
+                "properties": {
+                    "type": "inactive",
+                    "raw-value": "[2020-12-02 Wed]",
+                    "post-blank": 0,
+                    "start": "2020-12-02",
+                    "end": "2020-12-02"
+                },
+                "contents": []
+            }
+        ],
+        "description": [],
+        "email": "me@drewc.ca",
+        "language": "en"
+    },
+    // [...]
+}
+#+end_src
+
+*** ~org-value->child~
+
+We did something similar inside the ~render-org-node~ but a property is not a node and the node contents cannot be a single string. We'll change that.
+
+#+begin_src scheme :noweb-ref org-value->child
+(def (org-node? t)
+  (and (##foreign? t)
+       (equal? (js#ref t $$data_type:) "org-node")))
+
+(def (org-value->child h value
+                          (comps (js#jso))
+                          (pb #f))
+  (def mapproc (lambda (nv) (org-value->child
+                             h nv comps
+                             pb)))
+  (def (ov->c v)
+    (cond ((##string? value) v)
+          ((##vector? v) ;(js#console.log v (##vector-length v))
+           (if (= 0 (##vector-length v)) "" (vector-map mapproc v)))
+
+          ((org-node? v) (org#render-org-node h v comps))
+          (else (js#console.error (js#scm->js "Cannot find a createElement child for: ") v)
+                "")))
+
+  (let ((child (ov->c value)))
+    (if (not pb) child
+        (let* ((child (if (##vector? child) child (##vector child)))
+               (pbstr (##make-string pb #\space))
+               (len (##vector-length child)))
+          (set! (js#ref child len) pbstr)
+          child))))
+#+end_src
+
+*** ~OrgProp~ component
+
+A property is different from a node in that it's actually two objects, the key and the value. By default, a span will do.
+
+#+begin_src scheme :noweb-ref OrgProp
+(def OrgProp
+  (js#jso
+   props: #( "key" )
+   functional: #t
+   render: (lambda (h c)
+             (def key (js#ref c props: key:))
+             (def val (js#ref c children:))
+             (def jval (vector-map (lambda (v) (if (##foreign? v) (js#foreign->js v) v))
+                                  val))
+            (js#console.log (js#scm->js key))
+             (if (and (vector? val) (= 0 (vector-length val))) ""
+                 (h "span" (js#jso class: "org-document-property")
+                    (vector
+                     (h "strong" (js#jso class: "key")
+                        (vector key (h "span" (js#jso domProps: (js#jso innerHTML: ":&nbsp;")))))
+                     (h "big" (js#jso class: "value") (vector val " "))))))))
+
+
+#+end_src
+
+*** ~find-org-component~
+
+Like ~org-value->child~, we need to make our ~org-node-component~ more general. And specific.
+
+#+begin_src scheme :noweb-ref find-org-component
+(def (find-org-component
+      key comps
+      defaults: (defaults org-props-default-components)
+      fail-key: (fail-key unknown:)
+      fail: (fail OrgProp))
+  (def (obj? t) (and t (not (js#undefined? t))))
+
+  (def (comp . maybes)
+    (if (null? maybes) fail
+        (let ((comp? (car maybes)))
+          (if (obj? comp?) comp?
+              (##apply comp (cdr maybes))))))
+
+  (comp (and (obj? comps) (js#ref comps key))
+        (js#ref defaults key)
+        (and (obj? comps) (js#ref comps fail-key))
+        (js#ref defaults fail-key)))
+
+(def (find-org-property-component key (comps (js#jso)))
+  (find-org-component key comps
+                      defaults: org-props-default-components
+                      fail-key: unknown:
+                      fail: OrgProp))
+#+end_src
+
+
+*** ~OrgPropTitle~
+
+One property we'll give a component to is the ~title:~ property.
+
+#+begin_src scheme :noweb-ref OrgPropTitle
+(def OrgPropTitle
+  (js#jso functional: #t
+          render: (lambda (h c)
+             (def val (js#ref c children:))
+                (h "h1" (js#jso
+                       style:
+                      (js#jso
+                       display: "block"
+                       font-size: "2em"
+                       font-weight: "bold"
+                       line-height: "2em"
+                       padding: 0
+                       margin: 0)  class: "org-mode-title-property"
+                      )
+                val))))
+#+end_src
+*** ~OrgNodeTimestamp~
+
+#+begin_src scheme :noweb-ref OrgNodeTimestamp
+(def OrgNodeTimestamp
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def cprops (js#ref c props:))
+                    (def node (js#ref cprops node:))
+                    (def org-props (js#ref node properties:))
+                    (def start (js#ref org-props start:))
+                    (def end (js#ref org-props end:))
+                    (vector start (if (equal? start end) ""
+                                      (vector " to " end))))))
+#+end_src
+*** ~org-props-default-components~
+
+We've got two.
+
+#+begin_src scheme :noweb-ref org-props-default-components
+(def org-props-default-components
+  (js#jso title: OrgPropTitle  unknown: OrgProp))
+#+end_src
+
+*** New ~org-node-default-components~
+
+Add the timestamp in.
+
+#+begin_src scheme
+(def org-node-default-components
+  (js#jso paragraph: "p" bold: "strong"
+          timestamp: OrgNodeTimestamp
+          unknown: org#OrgNodeUnknown))
+#+end_src
+
+*** ~render-org-property~
+
+It all comes together here.
+
+#+begin_src scheme :noweb-ref render-org-property
+(def (render-org-property h key value comps)
+   (h (find-org-property-component key comps)
+      (js#jso props: (js#jso key: key))
+      (org-value->child h value comps)))
+#+end_src
+
+*** ~OrgDocPropTest~
+
+So, test it all out!
+
+#+begin_src scheme :noweb-ref OrgDocPropTest
+(def OrgDocPropTest
+  (js#jso functional: #t
+          render: (lambda (h c)
+                   (def doc (js#ref c props: document:))
+                   (def comps (js#ref c props: components:))
+                   (def props (js#ref doc properties:))
+                   (h "div" (js#jso class: "org-mode-document-properties")
+                      (js#map-object
+                       (lambda (k v) (render-org-property h k v comps))
+                       props)))))
+#+end_src
+
+Brilliant. I love seeing success on screen.
+
+
+#+CAPTION: The properties displayed as a document.
+                 [[./0004_doc-proc-test.png]]
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgDocPropTest.gx.ss :noweb yes :exports none
+namespace: org
+(import :js/syntax)
+
+{%org-node-component%}
+
+{%render-org-node%}
+
+{%renderOrgNode%}
+
+{%OrgNodeTimestamp%}
+
+
+{%org-value->child%}
+
+{%OrgProp%}
+
+{%OrgPropTitle%}
+
+{%org-props-default-components%}
+
+{%find-org-component%}
+
+{%render-org-property%}
+
+{%OrgDocPropTest%}
+
+{%fifth-comps%}
+
+(##inline-host-statement "console.log('val->child', @1@)" #;(##error "asd")
+                         (js#scm->js (find-org-component "title" (js#jso))))
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgDocPropTest" OrgDocPropTest)
+
+#+end_src
+
+*  ~OrgDocTest~, the reason behind this log
+
+First we'll add our ~OrgDocPropTest~ to the components so we use that element by
+default but can change.
+
+#+begin_src scheme :noweb-ref fifth-comps
+(def org-node-default-components
+  (js#jso paragraph: "p" bold: "strong"
+          timestamp: org#OrgNodeTimestamp
+          unknown: org#OrgNodeUnknown
+          documentProperties: org#OrgDocPropTest))
+#+end_src
+
+Make a ~find-org-node-component~ from the existing ~find-org-component~
+
+#+begin_src scheme :noweb-ref find-org-node-component
+(def (find-org-node-component node key: (key (js#ref node type:)) (comps (js#jso)))
+  (org#find-org-component key comps
+                      defaults: org-node-default-components
+                      fail-key: unknown:
+                      fail: org#OrgNodeUnknown))
+#+end_src
+
+Redo the ~OrgNodeUnknown~ so that it displays a readable text.
+
+#+begin_src scheme :noweb-ref OrgNodeUnknown
+(def OrgNodeUnknown
+  (js#jso
+   functional: #t
+   render:
+   (lambda (h c)
+    (def node (js#ref c props: node:))
+    ;;(##apply js#console.log (##map js#scm->js (list "Unknown:" (js#ref node type:))))
+    (def children (js#ref c children:))
+    ;;(##apply js#console.log (##map js#scm->js (list "Chlidren:" children)))
+  (def post-blank (let ((post-blank (js#ref node properties: post-blank:)))
+                    (and (##number? post-blank) (< 0 post-blank) post-blank)))
+    (if (or (js#undefined? children)
+            (= (if post-blank 1 0)
+               (##vector-length children)))
+      (let ((c (js#ref node properties: value:)))
+      ;;  (js#console.log (js#scm->js "Value") c)
+        (if (not (js#undefined? c))
+          (set! children (org#org-value->child h c)))))
+    (h "div"
+       (js#jso style: (js#jso border: "1px solid black" display: "inline-block" padding: "0.5em"))
+       (vector (h "span"
+                  (vector (h "strong" (vector "unknown: " (js#ref node type:) " ")) " "))
+               children)))))
+#+end_src
+
+** Revisit ~render[org-node|OrgNode]~
+
+Just to use our new functions.
+
+#+begin_src scheme :noweb-ref revisit-render-org-node
+(def (render-org-node h node comps (element (find-org-node-component node comps)))
+  (def pre-blank (let ((pre-blank (js#ref node properties: pre-blank:)))
+                    (and (##number? pre-blank) pre-blank)))
+  (def post-blank (let ((post-blank (js#ref node properties: post-blank:)))
+                    (and (##number? post-blank) post-blank)))
+  (def data (js#jso props: (js#jso node: node components: comps)))
+  (def children (let ((c (org#org-value->child h (js#ref node contents:) comps post-blank)))
+                  (if pre-blank
+                    (vector (##make-string pre-blank #\space) c)
+                    (vector c))))
+  (h element data children))
+#+end_src
+
+#+begin_src scheme :noweb-ref revisit-renderOrgNode
+(def (renderOrgNode createElement context)
+  (def props (js#ref context props:))
+  (def node (js#ref props node:))
+  (def components (js#ref props components:))
+  (render-org-node createElement node components))
+#+end_src
+
+** ~renderOrgDocTest~
+
+Given all that we have it's time to see a document. A render function does jyust
+that.
+
+#+begin_src scheme :noweb-ref renderOrgDocTest
+(def (renderOrgDocTest h c)
+  (def nprops (js#ref c props:))
+  (def doc (js#ref nprops document:))
+  (def comps (js#ref nprops components:))
+  (h "div" (vector "Org Doc Test"
+                    (h (find-org-node-component doc key: 'documentProperties comps)
+                     (js#jso props: (js#jso document: doc)))
+                    (org#org-value->child h (js#ref doc contents:) comps))))
+#+end_src
+
+
+** Conclusion: ~OrgDocTest~ works wonders!!
+
+We again have a simple functional component to string it all together.
+
+#+begin_src scheme :noweb-ref OrgDocTest
+(def OrgDocTest
+  (js#jso functional: #t render: renderOrgDocTest))
+#+end_src
+
+
+#+CAPTION: The properties displayed as a document.
+                 [[./0004_u_doc_test.png]]
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgDocTest.gx.ss :noweb yes :exports none
+namespace: org
+
+{%OrgNodeUnknown%}
+
+{%fifth-comps%}
+
+{%find-org-node-component%}
+
+{%revisit-render-org-node%}
+
+{%revisit-renderOrgNode%}
+
+{%org-value->child%}
+
+{%renderOrgDocTest%}
+
+{%OrgDocTest%}
+
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgDocTest" OrgDocTest)
+#+end_src
+
+
+* ~OrgNode[*]~ and ~OrgDoc~
+
+To complete this portion of this mission all the unknowns need to be met, taken
+in, and become members of the pack.
+
+** ~keyword:~ and ~OrgNodeNull~
+To start with let us take the outsiders. Those that are a part of the group but
+do not belong.
+
+#+begin_src scheme :noweb-ref OrgNodeNull
+(def OrgNodeNull (js#jso functional: #t render: (lambda _ "")))
+#+end_src
+
+Make the keyword null.
+
+#+begin_src scheme
+(def org-node-default-components
+  (js#jso paragraph: "p" bold: "strong" keyword: OrgNodeNull
+          timestamp: org#OrgNodeTimestamp
+          unknown: org#OrgNodeUnknown
+          documentProperties: org#OrgDocPropTest))
+#+end_src
+
+** ~section:~
+
+At this point, just a ~div~. Easy! *OrgMode* is based on *OutlineMode*,
+theretofore a ~headline:~ wraps a section and not /vice versa/.
+
+#+begin_src scheme
+(def org-node-default-components
+  (js#jso
+   section: "div" paragraph: "p" bold: "strong"
+   keyword: OrgNodeNull
+   timestamp: org#OrgNodeTimestamp
+   unknown: org#OrgNodeUnknown
+   documentProperties: org#OrgDocPropTest))
+#+end_src
+
+** ~renderOrgNodeChildren~
+
+We want to pass components along. We need this for insider things.
+
+#+begin_src scheme :noweb-ref renderOrgNodeChildren
+(def (renderOrgNodeChildren h c (children (js#ref c children:))
+                            (comps (js#ref c props: components:)))
+  (org#org-value->child h children comps))
+#+end_src
+
+** ~headline~ becomes ~OrgNodeHeadline~ with ~OrgNodeHeadlineTitle~
+
+#+begin_src scheme
+(def OrgNodeHeadlineTitle
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def level (js#ref c props: node: properties: level:))
+                    (def sz (+ 0.75 (/ 2 level)))
+                    (def size (##string-append (##number->string sz) "em"))
+                    (def height (##string-append (##number->string (/ sz 2)) "em"))
+                    (def style (let ((s (js#ref c props: style:)))
+                                 (if (js#undefined? s)
+                                   (js#jso
+                                    display: "block"
+                                    font-size: size
+                                    font-weight: "bold"
+                                    line-height: height
+                                    padding: 0
+                                    margin: 0
+                                    margin-top: "0.75em"
+                                    margin-bottom: "0.5em")
+                                   s)))
+                    (h (##string-append "h" (##number->string level))
+                       (js#jso style: style)
+                       (renderOrgNodeChildren
+                        h c (js#ref c props: node: properties: title:))))))
+(def OrgNodeHeadline
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def node (js#ref c props: node:))
+                    (def children (js#ref c children:))
+                    (def props (js#ref node properties:))
+                    (def comps (js#ref props components:))
+                    (def data (js#jso props: (js#jso node: node components: comps)))
+                   ; (js#console.log children)
+                    (h "div" data
+                       (##vector-append
+                        (vector (h (find-org-node-component node key: 'headlineTitle comps)
+                                   data))
+                        children)
+                    ))))
+#+end_src
+
+#+begin_src scheme
+(def org-node-default-components
+  (js#jso
+   section: "div" paragraph: "p" bold: "strong"
+   headline: OrgNodeHeadline
+   headlineTitle: OrgNodeHeadlineTitle
+   keyword: OrgNodeNull
+   timestamp: org#OrgNodeTimestamp
+   unknown: org#OrgNodeUnknown
+   documentProperties: org#OrgDocPropTest))
+#+end_src
+
+** ~make-OrgValueNode~
+
+Some nodes have their data in the ~value:~ property. If there are any
+~post-blank:~'s they also have a child.
+
+The simple tactic of "render them with this component/element" will do.
+
+#+begin_src scheme :noweb-ref make-OrgValueNode
+(def (make-OrgValueNode comp)
+  (js#jso
+   functional: #t
+   render:
+   (lambda (h c)
+    (def node (js#ref c props: node:))
+    (def children (js#ref c children:))
+    (def value (renderOrgNodeChildren
+                h (js#ref c components:)
+                (js#ref node properties: value:)))
+    (def vchild (##vector-append (if (##vector? value) value (##vector value))
+                                  children))
+    ;;  (js#console.log (js#scm->js "code value") (js#scm->js vchild) c)
+       (##vector-append (vector (h comp (js#jso props: (js#jso node: node)) value))
+                        children))))
+#+end_src
+
+** ~OrgNodeCode~, the first use of a ValueNode
+
+#+begin_src scheme :noweb-ref OrgCodeNode
+(def OrgNodeCode (make-OrgValueNode "code"))
+#+end_src
+
+** ~OrgNodeSrcBlock~ is functioning yet non-functional.
+
+We'll use *Prism*[fn:prism] for highlights. Because we want the ~mounted:~
+property it cannot be functional.
+
+#+begin_src scheme :noweb-ref OrgSrcBlock
+(def OrgNodeSrcBlock
+  (js#jso
+  ;functional: #t
+   props: #( "node" "components")
+   mounted: (js#function ()
+               (##inline-host-statement
+                 "(Prism.highlightElement(g_scm2host(@1@).$el.firstChild));"
+                  js#this))
+   render:
+   (js#function (h c)
+    (def c js#this)
+    (def node (js#ref c node:))
+    (def value (renderOrgNodeChildren h c (js#ref node properties: value:)))
+    (def lang (js#ref node properties: language:))
+    ;;(js#console.error (current-OrgDoc))
+    ;; (##inline-host-statement "window.food = (@1@);" (js#scm->js c))
+    (h "pre"
+       (vector
+        (h "code"
+                  (js#jso class: (##string-append "language-" lang))
+                  value))))))
+
+#+end_src
+
+** ~OrgTestSpecial~ and ~$mount~ makes dynamic scope for *Vue*
+
+For ~footnote-reference~, right now an unknown node, I need to access the
+~document:~ property of the ~OrgDoc~ parent node to see/know the footnote
+section.
+
+There are so many ways to go about it in *JavaScript*. I could pass the document
+as ~props:~, or go up the ~context.parent~ or ~this.parent~ chain. But that is
+cumbersome when there's *dynamic* or *special* scope to take care of just that.
+
+Long story short: I wanted scheme's `parameterize` to work in ~js~, and
+specifically around the ~render:~ functions. *Vue.js* does not nest render
+functions /per se/. Rather they return a ~createElement~ object which calls the
+render functions as _something_ is mounted.
+
+*** ~OrgTestUnSpecial~ and ~OrgTestComp~ fails
+
+To demonstrate: this is what drove me to the around method.
+
+A scheme parameter.
+#+begin_src scheme :noweb-ref current-special-element
+(def current-special-element (##make-parameter "i"))
+#+end_src
+
+A functional component that uses it and a non-functional component which uses
+that first component.
+
+#+begin_src scheme :noweb-ref OrgTestComp
+(def OrgTestComp
+  (js#jso
+   functional: #t
+   render: (lambda (h c)
+             ;; (js#console.log 1543 c)
+             (h (current-special-element) (js#ref c children:)))))
+
+
+(def OrgTestSubComp
+  (js#jso
+   functional: #f
+   render: (js#function (h)
+             ;; (js#console.log 2515 js#this)
+             (h OrgTestComp (js#ref js#this $slots: default:)))))
+#+end_src
+
+And now sone "toplevel" components which uses them. First, what fooled me.
+
+#+begin_src scheme :noweb-ref OrgTestUnSpecial
+(def OrgTestFoolSpecial
+  (js#jso functional: #t
+   render: (lambda (h c)
+             (parameterize ((current-special-element "b"))
+               (h OrgTestComp (vector "Special? So you think, FU P&T!"))))))
+#+end_src
+
+This actually works, which confused the heck out of me.
+
+#+CAPTION: The fool us special is a good show
+                 [[./0004_test-fool-special.png]]
+
+Once we step outside of functional rendering it fails.
+
+#+begin_src scheme :noweb-ref OrgTestUnSpecial
+(def OrgTestUnSpecial
+  (js#jso functional: #t
+   render: (lambda (h c)
+             (parameterize ((current-special-element "h4"))
+               (h OrgTestSubComp (vector "Special? Nay :("))))))
+#+end_src
+
+It does not work as (I) expected. It seems a functional component is rendered
+inside ~h~ AKA ~createElement~. But a normal component is rendered when mounted, not when ~createElement~'ed.
+
+As they say:
+
+#+begin_quote
+What is ~createElement~ actually returning? It’s not exactly a real DOM element.
+It could perhaps more accurately be named ~createNodeDescription~, as it
+contains information describing to Vue what kind of node it should render on the
+page, including descriptions of any child nodes.
+
+We call this node description a “virtual node”, usually abbreviated to VNode.
+“Virtual DOM” is what we call the entire tree of VNodes, built by a tree of Vue
+components. [fn:vdom]
+#+end_quote
+
+Because of that, the /Special/ ~parameter~, AKA dynamic scope, is in the wrong
+place.
+
+#+CAPTION: The unspecial does not h4
+                 [[./0004_test-unspecial.png]]
+
+
+*** ~Vue.prototype.$mount~ is where the special scope lies
+
+Because ~render:~ functions do not actually have to call other render functions
+simply wrapping ~parameterize~ around ~createElement~ does not work.
+
+Rather, ~render:~ functions are called when a non-~functional:~ component is
+~$mount~'ed. I wont bother to go into details, but at one point I had a component
+wrap another component and call ~$mount()~ on it.
+
+#+begin_src javascript
+self.__aroundNode.$mount();
+#+end_src
+
+Trying to pass everything the correct way made me realize that I can just futz
+with the prototype.
+
+This is now in the ~src/boot/gxjs.js~ file.
+
+First, keep the old one around.
+
+#+begin_src javascript
+var gxVueOldMount = Vue.prototype.$mount
+#+end_src
+
+One thing I discovered is that ~$mount~ certainly wants to mount something and
+fails if it does not. So we'll track if it is run.
+
+#+begin_src javascript
+var gxVueOldMount = Vue.prototype.$mount
+Vue.prototype.$mount = function (...args) {
+  var mountedP = false
+  const next = () => {
+    const res = gxVueOldMount.apply(this, args)
+    mountedP = true
+    return res
+  }
+
+  // Now the ~$around~ method if there, if not, same as last time.
+
+  const around = (fn, ...args) => { return fn.apply(this, args) }
+  if (typeof this.$around === 'function') {
+    around(this.$around, next)
+    // if next was not called, call it.
+    if (!mountedP) { next() }
+  } else {
+    next()
+  }
+  return this
+}
+#+end_src
+
+That's all we need to have dynamic scope around the rendering.
+
+*** ~OrgTestSpecial~ is the component to ~$mount~!!
+
+We've created a way to wrap an ~$around~ around ~$mount~ in ~methods:~. Let's use it.
+
+#+begin_src scheme :noweb-ref OrgTestSpecial
+(def OrgTestSpecial
+  (js#jso
+   methods: (js#jso $around: (js#function (call-next-method)
+                               (parameterize ((current-special-element "h4"))
+                                 (call-next-method))))
+   render: (js#function (h)
+               (h OrgTestSubComp (vector "Special? Yay! :)")))))
+#+end_src
+
+
+#+CAPTION: The special in the around does h4!
+                 [[./0004_test-special.png]]
+
+
+** ~OrgDoc~ becomes a scheme parameter!
+
+Because ~OrgDoc~ is a non-functional component the render function must be
+changed.
+
+#+begin_src scheme :noweb-ref
+(def (renderOrgDoc this h)
+  (def doc (js#ref this document:))
+  (def comps (js#ref this components:))
+    (h "div"
+       (##vector-append (vector (h (find-org-node-component doc key: 'documentProperties comps)
+                                   (js#jso props: (js#jso document: doc))))
+                        (org#org-value->child h (js#ref doc contents:) comps))))
+#+end_src
+
+Since the component is now an object and not a function we need to pass the
+~props:~ to make them a part of the object it seems.
+
+Beyond that a parameter, ~current-OrgDoc~, and that's that for now.
+
+#+begin_src scheme
+(def current-OrgDoc (##make-parameter #f))
+(def OrgDoc (js#jso props: #( "document" "components")
+                    methods: (js#jso $around: (js#function (next)
+                                                (parameterize ((current-OrgDoc js#this))
+                                                  (next))))
+                    render: (js#function (h) (renderOrgDoc js#this h))))
+#+end_src
+
+** ~OrgNodeFootnoteDefinition~
+
+We really should store the nodes in the meta and not just the definitions, but
+the thought process did not get there until it was "done" this way.
+
+#+begin_src scheme :noweb-ref OrgNodeFootnoteDefinition
+(def (find-org-mode-footnote-definitions document)
+  (def defines (js#jso))
+  (def (set-def! node)
+    (set! (js#ref defines (js#ref node properties: label:)) node))
+  (def (find-defs node)
+   ; (js#console.error 3232 (js#ref node contents:) node)
+    (vector-map (lambda (n)
+                    (if (org#org-node? n)
+                      (if (equal? "footnote-definition" (js#ref n type:))
+                        (set-def! n)
+                        (find-defs n))
+                      #f))
+                  (js#ref node contents:)))
+
+  (find-defs document)
+  defines)
+
+(def (OrgDoc-footnote-definitions (Doc (current-OrgDoc)))
+  (def fndef? (js#ref (current-OrgDoc) meta: footnote: definition:))
+  (if (and fndef? (not (js#undefined? fndef?)))
+    fndef?
+    (let ((fndef (find-org-mode-footnote-definitions (js#ref Doc document:))))
+      (set! (js#ref (current-OrgDoc) meta: footnote: definition:)
+        fndef)
+      fndef)))
+
+(def (org-footnote-definition-id node)
+  (string-append (js#ref node properties: label:) (js#ref node ref:)))
+
+(def OrgNodeFootnoteDefinition
+  { functional: #t
+    render: (lambda (h c)
+              (def node (js#ref c props: node))
+              (def label (js#ref node properties: label:))
+              (def inline? (js#ref c props: inline:))
+              (h "div" { style: { display: "inline-block" padding: "1em" } }
+                 (js#ref c children:)))
+   })
+
+#+end_src
+** ~OrgNodeFootnoteReference~
+
+A footnote reference /can/ reference a footnote definition by the label.
+According to The *OrgMode* Documentation[fn:orgcf:
+https://orgmode.org/manual/Creating-Footnotes.html] a footnote can be defined in
+a number of ways.
+
+They start with 'fn:'. Remember when footnotes were numbered? That's the first.
+
+#+begin_src org
+  The Org homepage[fn:1] now looks a lot better than it used to.
+...
+[fn:1] The link is: https://orgmode.org
+
+#+end_src
+
+So here's our meta numbered attempt[fn:42]. It comes out in ~oxjson~ as follows.
+
+#+begin_src json
+{
+    "$$data_type": "org-node",
+    "type": "footnote-reference",
+    "ref": "org485160e",
+    "properties": {
+        "label": "42",
+        "type": "standard",
+        "post-blank": 0
+    },
+    "contents": []
+}
+#+end_src
+
+#+begin_src scheme :noweb-ref OrgNodeFootnoteReference
+
+(def OrgNodeFootnoteReferenceStandard
+  (cut js#jso functional: #f
+       props: #( "node" "components")
+       data: (js#function () { text-decoration: "none" show-definition: #f org-doc: #f definition: #f} )
+       created: (js#function () (set! (js#ref js#this org-doc:) (current-OrgDoc)))
+       ;; methods: (js#jso
+       ;;           $around: (js#function (next)
+       ;;                      (parameterize ((current-OrgDoc (js#ref js#this org-doc:))) (next))))
+       render: (js#function (h)
+               (def cod (or (js#ref js#this org-doc:) (current-OrgDoc)))
+               (def fn-ref (js#ref js#this node:))
+               (def label (js#ref fn-ref properties: label:))
+               (def fn-def (if cod (js#ref (OrgDoc-footnote-definitions cod) label)))
+               (def comps (js#ref js#this components:))
+               (def def-data (js#jso props: (js#jso node: fn-def components: comps inline: #t)))
+               (def (show-def) (if (not (js#undefined? fn-def))
+                                 (renderOrgNode h def-data)
+                                 "NO DEF FOUND"))
+              ; (js#console.log 666 (js#scm->js label) cod fn-def js#this)
+               (h "div"
+                  { style: (js#jso display: "inline") }
+                  (vector
+                   (h "sup"
+                      { style: { text-decoration: (js#ref js#this text-decoration:)
+                                 font-size: "50%" cursor: "pointer"
+                                }
+                        on: { mouseover: (lambda _ (set! (js#ref js#this text-decoration:)
+                                                "underline"))
+
+                              mouseleave: (lambda _ (set! (js#ref js#this text-decoration:)
+                                                 "none"))
+                              click: (lambda _ (set! (js#ref js#this show-definition:)
+                                            (not (js#ref js#this show-definition:))))
+                              }
+                        }
+                      (vector label (js#ref js#this foo:)))
+                   (if (js#ref js#this show-definition:)
+                     (show-def)
+                     ""))))))
+
+#+end_src
+
+** ~OrgNodeLink~
+
+There are different sorts of links. What I learned in the footnote attempt is
+how ~Async Components~[fn:vac] work. I think that mixed with object local
+"components" IF I can refer to them by name get get rid of a lot of
+~find-org-node-*~ type code.
+
+But I digress.
+
+What that allows is us to define a node as a function that either returns a node
+or fails trying.
+
+We don't want to fail. So to start.
+
+#+begin_src scheme
+(def OrgNodeLink
+  (lambda (resolve _)
+    (resolve (OrgNodeLinkUnknown))))
+#+end_src
+
+Last time I also did some mouse binding. I'll do that again for an unknown link
+so I can see what it is. It's not a function but an object.
+
+#+begin_src scheme :noweb-ref OrgNodeLinkUnknown
+
+(def (js#JSON.stringify jso (f2host #t))
+  (let ((obj (if (and f2host (##foreign? jso)) (js#foreign->js jso) jso)))
+    (##inline-host-expression "g_host2scm(JSON.stringify(@1@));" obj)))
+
+(def OrgNodeLinkUnknown
+  (cut js#jso
+       functional: #f
+       props: #( "node" "components")
+       data: (js#function () { show-definition: #f } )
+      ; created: (js#function () (set! (js#ref js#this org-doc:) (current-OrgDoc)))
+       render: (js#function
+                (h)
+                (def link-node (js#ref js#this node:))
+                (def link-type (js#ref link-node properties: type:))
+                (def comps (js#ref js#this components:))
+                (def (show-def) (h "div" {style: {display: "inline-block"}}
+                                   (vector (js#JSON.stringify link-node))))
+                (h "a" { on: {click: (lambda _ (set! (js#ref js#this show-definition:)
+                                             (not (js#ref js#this show-definition:))))}
+                         style: { border: "1px solid black" }
+                       }
+                   (vector-append
+                    (vector "Unknown: " link-type
+                            (if (js#ref js#this show-definition:)
+                              (show-def)
+                              ""))
+                    (js#ref js#this $children:))))))
+
+#+end_src
+
+*** ~OrgNodeLinkHttps~
+
+The first I see in this document is a footnote ~oxjson~.
+
+#+begin_src json
+{
+"$$data_type": "org-node",
+"type": "link",
+"ref": "orgf58126d",
+"properties": {
+"type": "https",
+"path": "//github.com/jlumpe/ox-json",
+"format": "plain",
+"raw-link": "https://github.com/jlumpe/ox-json",
+"application": null,
+"search-option": null,
+"post-blank": 0,
+"is-internal": false,
+"target-ref": null,
+"is-inline-image": false
+},
+"contents": []
+}
+#+end_src
+
+What matters to us first is the ~properties.type~ field.
+
+#+begin_src scheme :noweb-ref org-node-link-type
+(def org-node-link-type (cut js#ref <> properties: type:))
+#+end_src
+
+For this it is ~"https"~. I note there is no contents, but I predict there will
+be for others.
+
+#+begin_src scheme :noweb-ref OrgNodeLinkHttps
+(def OrgNodeLinkHttps
+  { functional: #t
+    render: (lambda (h c)
+              (def node (js#ref c props: node:))
+              (def path (js#ref node properties: path:))
+              #;(js#console.log 4323 path c (js#ref c props:) (js#ref c props: node:))
+              (def children (let ((cs (js#ref c children:)))
+                              (if (> (vector-length cs) 0) cs
+                                  (vector (js#ref node properties: raw-link:)))))
+              (if (not (##string? path)) (h "strong" "NO PATH?")
+                  (h "a" { attrs: { href: (##string-append "https://" path)
+                                    target: "_blank"
+                                  }
+                         }
+                     children)))
+  })
+#+end_src
+
+So a new ~OrgNodeLink~, now with an ~OrgNodeChooseLink~ functional thing.
+
+#+begin_src scheme
+#;(def OrgNodeChooseLink
+  (lambda (r _) (r
+            { functional: #f
+              props: #("node")
+              render: (js#function
+                       (h)
+                       (def node (js#ref js#this node:))
+                       (def type (org-node-link-type node))
+                       (js#console.log 7666 js#this (current-org-paragraph-properties))
+                       (h
+                        (cond ((equal? type "https") OrgNodeLinkHttps)
+                              (else (OrgNodeLinkUnknown)))
+                        { props: { node: node } }
+                        (js#ref js#this $children:)))
+       })))
+(def OrgNodeChooseLinkFunctional
+     { functional: #t
+  ;     props: #("node")
+       render: (js#function
+                (h c)
+                (def node (js#ref c props: node:))
+                (def type (org-node-link-type node))
+              ;;  (js#console.log 10007666 (current-org-paragraph-properties))
+                (h
+                 (cond ((equal? type "https") OrgNodeLinkHttps)
+                       (else (OrgNodeLinkUnknown)))
+                 (js#ref c data:)
+                 (js#ref c children:)))
+       })
+(def OrgNodeLink OrgNodeChooseLinkFunctional)
+#+end_src
+
+
+*** ~OrgModeLinkInlineImage~
+
+This time around I wanted inline images as they are a great way to show
+screenshots along the way.
+
+#+begin_src json
+{
+    "$$data_type": "org-node",
+    "type": "link",
+    "ref": "org851c986",
+    "properties": {
+        "type": "file",
+        "path": "./0004_first-test.png",
+        "format": "bracket",
+        "raw-link": "./0004_first-test.png",
+        "application": null,
+        "search-option": null,
+        "post-blank": 0,
+        "is-internal": false,
+        "target-ref": null,
+        "is-inline-image": true
+    },
+    "contents": []
+}
+#+end_src
+
+**** ~<img src=...>~. We need to know the path
+
+Right now there's no rhyme or reason behind our testing so no way to know the location.
+
+When I have routing setup the existing path should just work. For now.
+
+#+begin_src scheme :noweb-ref hack-img-path
+(def (org-hack-img-path path)
+  (string-append "/log/" path))
+#+end_src
+
+**** Caption?
+
+But wait! There's actually a caption around it.
+
+#+begin_src json
+{
+    "$$data_type": "org-node",
+    "type": "paragraph",
+    "ref": "orga12671a",
+    "properties": {
+        "post-blank": 1,
+        "post-affiliated": 4550,
+        "caption": [
+            [
+                [
+                    "This is also the first caption!"
+                ]
+            ]
+        ],
+        "name": "screenshot:first-test"
+    },
+    "contents": [
+        {
+            "$$data_type": "org-node",
+            "type": "link",
+            "ref": "org851c986",
+            "properties": {
+                "type": "file",
+                "path": "./0004_first-test.png",
+                "format": "bracket",
+                "raw-link": "./0004_first-test.png",
+                "application": null,
+                "search-option": null,
+                "post-blank": 0,
+                "is-internal": false,
+                "target-ref": null,
+                "is-inline-image": true
+            },
+            "contents": []
+        },
+        "\n"
+    ]
+}
+#+end_src
+
+We very much need to redefine a paragraph so we can see that caption. I gave it
+a name as well. Ignore that for now.
+
+**** ~OrgNodeParagraph~
+
+We already have ~parameterize~ working, so the idea is to make an
+~OrgNodeParagraph~ that dynamically binds the ~properties:~ of the paragraph.
+
+#+begin_src scheme :noweb-ref OrgNodeParagraph
+(def current-org-paragraph-properties (##make-parameter #f))
+(def OrgNodeParagraph
+  (lambda (r _)
+    (r (js#jso
+        props: #( "node" "components")
+        methods: (js#jso
+                  $around: (js#function (next)
+                             (parameterize ((current-org-paragraph-properties
+                                             (js#ref js#this node: properties:)))
+                               (next))))
+        render: (js#function
+                 (h)
+                 (def node (js#ref js#this node:))
+                 (def comps (js#ref js#this components:))
+                 #;(js#console.log
+                      "p" (js#ref js#this $children:) (js#ref js#this node: type:) js#this)
+               ; (js#console.error 925265296 js#this (current-org-paragraph-properties))
+                 (render-org-node h node comps "p"))))))
+#+end_src
+
+**** So we can ~<figcaption>~ or not
+
+A certain webpage[fn:mfc] gives us what we need.
+
+#+begin_src html
+<figure>
+    <img src="/media/cc0-images/elephant-660-480.jpg"
+         alt="Elephant at sunset">
+    <figcaption>An elephant at sunset</figcaption>
+</figure>
+#+end_src
+
+#+begin_src scheme :noweb-ref OrgNodeLinkInlineImage
+(def (org-node-link-inline-image? node)
+  (js#ref node properties: is-inline-image:))
+
+(def OrgNodeLinkInlineImage
+  {
+   functional: #t
+   render: (lambda (h c)
+             (def node (js#ref c props: node:))
+             (def path (js#ref node properties: path:))
+             (def caption (let ((o (current-org-paragraph-properties)))
+                            (and o (let ((c (js#ref o caption:)))
+                                     (and (not (js#undefined? c)) c)))))
+             (def src (org-hack-img-path path))
+
+             ;;; (js#console.log 8765 src (string-length "asd") (if caption caption) (current-org-paragraph-properties))
+             (h "figure" (vector (h "img" { attrs: { src: src alt: caption } })
+                                 (if caption (h "figcaption" caption) ""))))
+
+  })
+#+end_src
+
+**** Add it to ChooseLink
+#+begin_src scheme
+(def OrgNodeChooseLink
+     { functional: #t
+  ;     props: #("node")
+       render:
+       (js#function (h c)
+        (def node (js#ref c props: node:))
+        (def type (org-node-link-type node))
+        ;;  (js#console.log 10007666 (current-org-paragraph-properties))
+        (h
+         (cond ((equal? type "https") OrgNodeLinkHttps)
+               ((org-node-link-inline-image? node) OrgNodeLinkInlineImage)
+               (else (OrgNodeLinkUnknown)))
+         (js#ref c data:)
+         (js#ref c children:)))
+       })
+(def OrgNodeLink OrgNodeChooseLink)
+#+end_src
+
+*** ~OrgNodeLinkCustomId~
+
+
+First, this is an internal link to a headline's ~CUSTOM_ID~ parameter. We need
+to redo that.
+
+**** ~OrgNodeHeadlineTitle~ again
+
+Here's the relevant JSON. In the drawer there's a ~CUSTOM_ID:~. Othwerwise, use
+the ~ref:~.
+
+#+begin_src json
+{
+    "$$data_type": "org-node",
+    "type": "headline",
+    "ref": "orgcde64e5",
+    "drawer": {
+        "CUSTOM_ID": "OrgNodeTest"
+    },
+    "properties": {
+        "tags-all": [],
+        "raw-value": "~OrgNodeTest~? Nested, functional, here we go.",
+        "pre-blank": 0,
+        "level": 1,
+        "priority": null,
+        "tags": [],
+        "todo-keyword": null,
+        "todo-type": null,
+        "post-blank": 1,
+        "footnote-section-p": false,
+        "archivedp": false,
+        "commentedp": false,
+        "post-affiliated": 2891,
+        "title": [
+            {
+                "$$data_type": "org-node",
+                "type": "code",
+                "ref": "org5a651d5",
+                "properties": {
+                    "value": "OrgNodeTest",
+                    "post-blank": 0
+                },
+                "contents": []
+            },
+            "? Nested, functional, here we go."
+        ]
+    },
+    "contents": [ ... ]
+}
+
+#+end_src
+
+
+#+begin_src scheme
+(def (org-headline-id node)
+  (def cid? (js#ref node drawer: CUSTOM_ID:))
+  (if (not (js#undefined? cid?)) cid? (js#ref node ref:)))
+
+(def OrgNodeHeadlineTitle
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def level (js#ref c props: node: properties: level:))
+                    (def no-id (let ((nid (js#ref c props: noID:)))
+                                 (if (js#undefined? nid) #f nid)))
+                    (def sz (+ 0.75 (/ 2 level)))
+                    (def size (##string-append (##number->string sz) "em"))
+                    (def height (##string-append (##number->string (/ sz 2)) "em"))
+                    (def hid (org-headline-id (js#ref c props: node:)))
+                    (def style (let ((s (js#ref c props: style:)))
+                                 (if (js#undefined? s)
+                                   (js#jso
+                                    display: "block"
+                                    font-size: size
+                                    font-weight: "bold"
+                                    line-height: height
+                                    padding: 0
+                                    margin: 0
+                                    margin-top: "0.75em"
+                                    margin-bottom: "0.5em")
+                                   s)))
+                    ;;(js#console.error 43221 no-id (js#ref c props:))
+                    (h (##string-append "h" (##number->string level))
+                       { style: style }
+                       (vector-append
+                        (if no-id #()
+                            (vector (h "div" { style: {
+                                                   position: "absolute"
+                                                   margin: "-4.15em"
+                                                   }
+                                           attrs: { id: hid }
+
+                                           }
+                                   "")))
+                        (renderOrgNodeChildren
+                         h c (js#ref c props: node: properties: title:)))))))
+(def OrgNodeHeadline
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def node (js#ref c props: node:))
+                    (def children (js#ref c children:))
+                    (def props (js#ref node properties:))
+                    (def comps (js#ref props components:))
+                    (def data (js#jso props: (js#jso node: node components: comps)))
+                   ; (js#console.log children)
+                    (h "div" data
+                       (##vector-append
+                        (vector (h (find-org-node-component node key: 'headlineTitle comps)
+                                   data))
+                        children)
+                    ))))
+#+end_src
+
+**** Now the Node
+Almost a direct c/p of the HTTPS link.
+
+#+begin_src scheme :noweb-ref OrgNodeLinkCustomId
+(def OrgNodeLinkCustomId
+  { functional: #t
+    render: (lambda (h c)
+              (def node (js#ref c props: node:))
+              (def path (js#ref node properties: raw-link:))
+              (def children (let ((cs (js#ref c children:)))
+                              (if (> (vector-length cs) 0) cs
+                                  (vector (js#ref node properties: raw-link:)))))
+                  (h "a" { attrs: { href: path } } children))
+
+  })
+#+end_src
+
+
+**** Add it to ChooseLink
+#+begin_src scheme :noweb-ref OrgNodeLink
+(def OrgNodeChooseLink
+     { functional: #t
+  ;     props: #("node")
+       render:
+       (js#function (h c)
+        (def node (js#ref c props: node:))
+        (def type (org-node-link-type node))
+        ;;  (js#console.log 10007666 (current-org-paragraph-properties))
+        (h
+         (cond ((equal? type "https") OrgNodeLinkHttps)
+               ((equal? type "custom-id") OrgNodeLinkCustomId)
+               ((org-node-link-inline-image? node) OrgNodeLinkInlineImage)
+               (else (OrgNodeLinkUnknown)))
+         (js#ref c data:)
+         (js#ref c children:)))
+       })
+(def OrgNodeLink OrgNodeChooseLink)
+#+end_src
+
+** ~OrgNodeQuoteBlock~
+
+We use quote blocks. While ~#+CAPTION:~ works for links to images, and for
+source blocks apparently(!!), it does not work for quote blocks.
+
+So I've decided to make one.
+
+Here is the quote.
+
+#+begin_quote
+This is a quote
+
+ — This is a caption or attribution
+#+end_quote
+
+Here is the source of that quote.
+#+begin_src org
+,#+begin_quote
+This is a quote
+
+ — This is a caption or attribution
+,#+end_quote
+#+end_src
+
+At the very end, to mark the caption, we use the the *Em Dash*[fn:emd]. That character, ~—~, is like a slightly longer hyphen. But it is not a hypen, it's a dash.
+
+I get it by holding *Compose* while hitting the hypen 3 times: "[Compose]---".
+Different approaches for different OS's[fn:wd].
+
+So if the last line starts with an *em dash* then it becomes a caption.
+~<figcaption>~.
+
+Here's the json. This should be a caption! TODO: <--- What I just said.
+
+#+begin_src json
+{
+    "$$data_type": "org-node",
+    "type": "quote-block",
+    "ref": "orgfb27171",
+    "properties": {
+        "post-blank": 1,
+        "post-affiliated": 51926
+    },
+    "contents": [
+        {
+            "$$data_type": "org-node",
+            "type": "paragraph",
+            "ref": "org13f429e",
+            "properties": {
+                "post-blank": 1,
+                "post-affiliated": 51940
+            },
+            "contents": [
+                "This is a quote\n"
+            ]
+        },
+        {
+            "$$data_type": "org-node",
+            "type": "paragraph",
+            "ref": "org03d0a5e",
+            "properties": {
+                "post-blank": 0,
+                "post-affiliated": 51957
+            },
+            "contents": [
+                "— This is a caption or attribution\n"
+            ]
+        }
+    ]
+}
+#+end_src
+
+We get very lucky in how the tokens are parsed as the space before, which I used because I find it readable, is not in that paragraph at all. That rules!
+
+#+begin_src scheme :noweb-ref OrgNodeQuoteBlock
+(def (org-node-quote-block-has-caption? node)
+  (def contents (js#ref node contents:))
+  (def last-node (vector-ref contents (- (vector-length contents) 1)))
+  (def last-node-contents (and (org#org-node? last-node)
+                               (js#ref last-node contents:)))
+  (def last-of-last (if last-node-contents
+                      (vector-ref last-node-contents
+                                  (- (vector-length last-node-contents) 1))
+                      last-node))
+  (and (string? last-of-last)
+       (equal? (string-ref last-of-last 0)
+               #\—)))
+
+
+(def OrgNodeQuoteBlock
+  {
+   functional: #t
+   render:
+   (lambda (h c)
+     (def node (js#ref c props: node:))
+     (def post-blank (js#ref node properties: post-blank:))
+     (def children (js#ref c children:))
+     (def caption (let ((c? (org-node-quote-block-has-caption? node)))
+                    (and c?
+                         (let* ((num (if (equal? 0 post-blank) 1 2))
+                                (c (vector-ref
+                                    children (- (vector-length children) num))))
+                           (vector-set! children num "")
+                           c))))
+    ;; (js#console.log 911 node c caption post-blank)
+     (h "figure"
+        (vector (h "blockquote" children)
+                (if caption (h "figcaption" (vector caption)) ""))))
+
+ })
+#+end_src
+
+** A ~meta:~ ~data:~ "global"
+
+While going through the now dynamic document parameter and looking for it on
+each reference is actually quite easy and more than possible I can actually
+store ~meta:~ information within the ~OrgDoc~ inside ~data:~, which is not an
+android.
+
+#+begin_src scheme
+(def current-OrgDoc (##make-parameter #f))
+(def OrgDoc
+  (js#jso
+   props: #( "document" "components")
+   created: (js#function () (set! (js#ref js#this meta:) (js#jso)))
+  ; data: (js#function () (js#jso meta: (js#jso)))
+   methods: (js#jso
+             $around: (js#function (next)
+                        (parameterize ((current-OrgDoc js#this)) (next))))
+   render: (js#function (h)
+             ;; (js#console.error js#this)
+             (renderOrgDoc js#this h))))
+#+end_src
+
+** The final default components
+#+begin_src scheme :noweb-ref final-comps
+(def org-node-default-components
+  (js#jso
+   section: "div" bold: "strong" italic: "em" plain-list: "ul" item: "li"
+   paragraph: OrgNodeParagraph
+   quote-block: OrgNodeQuoteBlock
+   underline: "u"
+   code: OrgNodeCode
+   src-block: OrgNodeSrcBlock
+
+   headline: OrgNodeHeadline
+   headlineTitle: OrgNodeHeadlineTitle
+
+   footnote-reference: (lambda (resolve reject) (resolve (OrgNodeFootnoteReferenceStandard)))
+   footnote-definition: OrgNodeFootnoteDefinition
+
+   link: OrgNodeLink
+
+   keyword: OrgNodeNull
+   timestamp: org#OrgNodeTimestamp
+   unknown: org#OrgNodeUnknown
+
+   documentProperties: org#OrgDocPropTest))
+#+end_src
+** Conclusion
+
+As of this moment, in this document, there are no unknown nodes.
+
+It's been a long time, so far <2020-12-05 Sat>--<2020-12-16 Wed>, but this
+document is almost meta-complete.
+
+
+
+#+begin_src shell :noweb-ref compiler-shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _js=`echo $_js | sed 's/js.*_\(.*\)/\1/'`
+ _statics="$_statics $1"
+
+  echo "--- compiling $1 to $_js"
+  gsc -target js -prelude '(include "~~lib/_gambit#.scm")' -o  $_js $1 || exit 2; echo;
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/js__${2}$_fn.scm
+
+ _gxc $1;
+ _gsc $_st;
+ }
+# _comp Org.gx.ss && mv Org.gx.js ../src/assets/
+# _comp components/ButtonCounter.gx.ss components__ && mv ButtonCounter.gx.js ../src/components/
+# _comp components/org/OrgNode.gx.ss components__org__ && mv OrgNode.gx.js ../src/components/org/
+# _comp components/org/OrgDocFirstTest.gx.ss components__org__ && mv OrgDocFirstTest.gx.js ../src/components/org/
+# _comp components/org/OrgDocPropTest.gx.ss components__org__ && mv OrgDocPropTest.gx.js ../src/components/org/
+# _comp components/org/OrgDocTest.gx.ss components__org__ && mv OrgDocTest.gx.js ../src/components/org/
+_comp components/org/OrgDoc.gx.ss components__org__ && mv OrgDoc.gx.js ../src/components/org/
+# _comp components/org/OrgNodeFirstTest.gx.ss components__org__ && \
+#    mv OrgNodeFirstTest.gx.js ../src/components/org/
+# _comp components/org/OrgNodeSecondTest.gx.ss components__org__ && \
+#    mv OrgNodeSecondTest.gx.js ../src/components/org/
+#  _comp components/org/OrgNodeThirdTest.gx.ss components__org__ && \
+#     mv OrgNodeThirdTest.gx.js ../src/components/org/
+# _comp components/org/OrgNodeFourthTest.gx.ss components__org__ && \
+#    mv OrgNodeFourthTest.gx.js ../src/components/org/
+#+end_src
+
+
+* Table of Contents
+
+We are using *Quasar*[fn:q] and *Vue.js*, which has some nice ways to lay things
+out. I should have started with this (he says, now that it seems easy) as I am
+sick of scrolling and this is, at this moment, a 4894 line document.
+
+So a TOC is in order. Here's what we know.
+
+  1) A headline will always be toplevel in a document or a headline's
+     ~contents:~.
+
+Should be pretty easy.
+
+#+begin_src scheme :noweb-ref org-contents-headlines
+(def (org-contents-headlines contents)
+  (def (ohc)
+    (def headlines [])
+
+    (def (copy-headline hl)
+      (let ((new (js#jso)))
+        (js#map-object (lambda (k v) (if (not (equal? k "contents"))
+                                  (set! (js#ref new k) (js#scm->js v))))
+                       hl)
+        (set! (js#ref new contents:) (vector-map js#scm->js (org-contents-headlines (js#ref hl contents:))))
+        new))
+
+    (vector-for-each (lambda (node)
+                       (when (and (org#org-node? node)
+                                (equal? (js#ref node type:) "headline"))
+
+                          ;; (js#console.log 5123 node)
+                         (set! headlines (cons (copy-headline node) headlines))))
+                     contents)
+    (list->vector (reverse headlines)))
+
+  (if (vector? contents) (ohc) #()))
+#+end_src
+
+#+begin_src scheme :noweb-ref OrgDocTOC
+
+(def (render-OrgTOCHeadlines h contents)
+  (h "ol" (vector-map (lambda (hl)
+                        (h "li" { style: { list-style-type: "none" } } (vector (h OrgDocTOCHeadline { props: { headline: hl } }))))
+                      contents)))
+
+(def OrgDocTOCHeadline
+  (lambda (go _)
+    (go {
+         props: #( "headline" )
+         data: (lambda _ { expand?: #f })
+         render: (js#function (h)
+                  (def headline (js#ref js#this headline:))
+                  (def expand? (js#ref js#this expand?:))
+                  (def arrow (if expand?  "⯅" "⯆"))
+                  (def child-size (vector-length (js#ref headline contents:)))
+                  (h "div" { style: { display: "inline-block" } }
+                     (vector
+                      (if (zero? child-size) ""
+                          (h "big" { style: { float: "right" margin-top: "0.25em" margin-left: "2em" opacity: "0.5" cursor: "pointer" }
+                                     on: { click: (lambda _ (set! (js#ref js#this expand?:) (not expand?))) }
+                                   }
+                             arrow))
+                      (h "div" { style: { position: "absolute"
+                                          margin: "-12.15em"
+                                        }
+                                 attrs: { id: (string-append "TOC" (org-headline-id headline)) }
+
+                                 }
+                         "")
+                      (h "a" { attrs: { href: (string-append "#" (org-headline-id headline)) } }
+                         (vector (h OrgNodeHeadlineTitle
+                                    { props: { node: headline
+                                               noID: #t
+                                               style: { font-size: "2em" line-height: "0.25rem" display: "inline-block" }
+                                             }
+                                      })))
+                      (if (or (not expand?) (zero? child-size)) "" (render-OrgTOCHeadlines h (js#ref headline contents:))
+                          #;(h "div" (js#JSON.stringify (vector-ref (js#ref headline contents:) 0)))
+                          #;(h OrgDocTOCHeadline { props: { headline: (vector-ref (js#ref headline contents:) 0) } })))))
+         })))
+
+(def OrgDocTOC
+  {
+   functional: #t
+   render: (lambda (h c)
+             (def doc (js#ref c props: document:))
+             (def lines (org-contents-headlines (js#ref doc contents:)))
+             (js#console.log lines)
+             (h "div"
+               (vector
+                (h "h5" "Table Of Contents")
+                (render-OrgTOCHeadlines h lines))))
+
+  })
+#+end_src
+
+Now I want a want to go back to the TOC from the headline.
+
+#+begin_src scheme :noweb-ref OrgNodeHeadline
+(def (org-headline-id node)
+  (def cid? (js#ref node drawer: CUSTOM_ID:))
+  (if (not (js#undefined? cid?)) cid? (js#ref node ref:)))
+
+(def OrgNodeHeadlineTitle
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def level (js#ref c props: node: properties: level:))
+                    (def no-id (let ((nid (js#ref c props: noID:)))
+                                 (if (js#undefined? nid) #f nid)))
+                    (def sz (+ 0.75 (/ 2 level)))
+                    (def size (##string-append (##number->string sz) "em"))
+                    (def height (##string-append (##number->string (/ sz 2)) "em"))
+                    (def hid (org-headline-id (js#ref c props: node:)))
+                    (def style (let ((s (js#ref c props: style:)))
+                                 (if (js#undefined? s)
+                                   (js#jso
+                                    display: "block"
+                                    font-size: size
+                                    font-weight: "bold"
+                                    line-height: height
+                                    padding: 0
+                                    margin: 0
+                                    margin-top: "0.75em"
+                                    margin-bottom: "0.5em")
+                                   s)))
+                    (if (not (##number? level))
+                      (begin (js#console.log 123 "wta?" c) (h "div" "no number"))
+                    ;;(js#console.error 43221 no-id (js#ref c props:))
+                    (h (##string-append "h" (##number->string level))
+                       { style: style }
+                       (vector-append
+                        (if no-id #()
+                            (vector (h "div" { style: {
+                                                   position: "absolute"
+                                                   margin: "-4.15em"
+                                                   }
+                                           attrs: { id: hid }
+
+                                           }
+                                   "")
+                                    (h "a" { style: { float: "right" margin-top: "0.25em" margin-left: "2em"
+                                                      opacity: "0.5" cursor: "pointer" text-decoration: "none"
+                                                    }
+                                             attrs: { href: (string-append "#TOC" hid) title: "Back to Table Of Contents" }
+                                           }
+                                       "☰")))
+                        (renderOrgNodeChildren
+                         h c (js#ref c props: node: properties: title:))))))))
+(def OrgNodeHeadline
+  (js#jso functional: #t
+          render: (lambda (h c)
+                    (def node (js#ref c props: node:))
+                    (def children (js#ref c children:))
+                    (def props (js#ref node properties:))
+                    (def comps (js#ref props components:))
+                    (def data (js#jso props: (js#jso node: node components: comps)))
+                   ; (js#console.log children)
+                    (h "div" data
+                       (##vector-append
+                        (vector (h (find-org-node-component node key: 'headlineTitle comps)
+                                   data))
+                        children)
+                    ))))
+#+end_src
+** ~OrgDoc~ with TOC
+
+While going through the now dynamic document parameter and looking for it on
+each reference is actually quite easy and more than possible I can actually
+store ~meta:~ information within the ~OrgDoc~ inside ~data:~, which is not an
+android.
+
+#+begin_src scheme :noweb-ref OrgDoc
+(def current-OrgDoc (##make-parameter #f))
+(def OrgDoc
+  (js#jso
+   props: #( "document" "components")
+   created: (js#function ()
+             (set! (js#ref js#this meta:) (js#jso))
+             (set! (js#ref js#this show-popup?:) #f))
+   ;data: (lambda _ (js#jso show-popup?: #f))
+   methods: (js#jso
+             $around: (js#function (next)
+                        (parameterize ((current-OrgDoc js#this)) (next))))
+   render: (js#function (h)
+             ;; (js#console.error 23445 js#this (js#ref js#this document: contents:))
+              (h "div"
+                 (vector
+                         (renderOrgDoc js#this h))))))
+#+end_src
+
+
+#+begin_src scheme :tangle ../../gx/components/org/OrgDoc.gx.ss :noweb yes :exports none
+namespace: org
+(import :js/syntax)
+
+{%render-org-property%}
+{%OrgProp%}
+{%OrgPropTitle%}
+{%OrgDocPropTest%}
+
+{%org-props-default-components%}
+
+{%OrgNodeUnknown%}
+
+{%OrgNodeNull%}
+
+{%OrgNodeHeadline%}
+
+{%make-OrgValueNode%}
+
+{%OrgCodeNode%}
+
+{%OrgSrcBlock%}
+{%OrgNodeTimestamp%}
+{%OrgNodeFootnoteDefinition%}
+{%OrgNodeFootnoteReference%}
+
+{%OrgNodeParagraph%}
+
+{%org-node-link-type%}
+{%OrgNodeLinkUnknown%}
+{%OrgNodeLinkHttps%}
+{%hack-img-path%}
+{%OrgNodeLinkInlineImage%}
+{%OrgNodeLinkCustomId%}
+{%OrgNodeLink%}
+
+{%OrgNodeQuoteBlock%}
+
+
+{%final-comps%}
+
+{%find-org-component%}
+
+{%find-org-node-component%}
+
+{%revisit-render-org-node%}
+
+{%revisit-renderOrgNode%}
+
+{%org-value->child%}
+
+{%renderOrgNodeChildren%}
+
+{%renderOrgDoc%}
+
+{%org-contents-headlines%}
+
+{%OrgDocTOC%}
+
+{%OrgDoc%}
+
+{%current-special-element%}
+
+{%OrgTestComp%}
+
+{%OrgTestUnSpecial%}
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgTestUnSpecial" OrgTestUnSpecial)
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgTestFoolSpecial" OrgTestFoolSpecial)
+
+{%OrgTestSpecial%}
+
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgTestSpecial" OrgTestSpecial)
+(##inline-host-statement "exports[g_scm2host(@1@)] = g_scm2host(@2@);"
+                         "OrgDoc" OrgDoc)
+#+end_src
+
+* The (new) Syntax
+
+#+begin_src scheme  :tangle ../../gx/syntax.ss
+namespace: #f
+
+
+(import
+  (prefix-in (only-in <MOP> @method) @))
+
+(defsyntax (@method stx)
+  (syntax-case stx ()
+    ((_ kv ...)
+     #'(js#jso kv ...))))
+
+(export js#function js#this js#++)
+
+(export @method @@method)
+(def js#this (##inline-host-expression "window;"))
+
+(defsyntax (js#function stx)
+  (syntax-case stx ()
+    ((macro _args body ...)
+     (let* ((args (syntax->datum #'_args))
+            (binds (let lp ((bs args) (n 0))
+                     (if (null? bs) bs
+                         (cons (list (car bs) `(##vector-ref js#arguments ,n))
+                               (lp (cdr bs) (+ n 1)))))))
+       (with-syntax ((lbinds (datum->syntax #'macro binds))
+                     (this
+                      (datum->syntax #'macro 'js#this))
+                     (args (datum->syntax #'macro 'js#arguments)))
+           #'(let ((fn (lambda (this args)
+                         (let lbinds
+                             (begin (##inline-host-expression "undefined") body ...)))))
+               (js#js->foreign (##inline-host-expression
+                              "function (...args) { let scmProc = g_scm2host(@1@);
+  return scmProc(this, args);
+   };" fn))))))))
+
+(defsyntax (js#++ stx)
+  (syntax-case stx ()
+    ((macro place number)
+       #'(let ((val place))
+           (set! place (+ val number))))
+    ((macro place)
+     #'(macro place 1))))
+#+end_src
+
+
+* The (new) FFI
+
+#+begin_src scheme :noweb yes :tangle ../../gx/gxjs-ffi.ss
+namespace: js
+(export @method @@method)
+
+(import
+  (prefix-in (only-in <MOP> @method) @))
+
+(defsyntax (@method stx)
+  (syntax-case stx ()
+    ((_ kv ...)
+     #'(js#jso kv ...))))
+
+(def (console.log . objs)
+  (##inline-host-statement "console.log.apply(this, (@1@))" (##list->vector objs)))
+
+(def (debug . args) (##apply console.log (map scm->js args)))
+
+(def (console.error . objs)
+  (##inline-host-statement "console.error.apply(this, (@1@))" (##list->vector objs)))
+(def (undefined? thing)
+  (##inline-host-expression "(() => { res = @1@ === undefined ; return g_host2scm(res); })()" thing))
+
+(def (new-plist->jso plist)
+  (def alist [])
+  (let lp ((pl plist))
+    (if (null? pl)
+      (let ((jso ((lambda () (##inline-host-expression "(() => { foo = (@1@);  return g_host2foreign(g_scm2host(foo)); })();"
+                                            (reverse alist))))))
+        ;; (js#console.log jso)
+        jso)
+        (let* ((key (##car pl))
+               (key (if (or (keyword? key) (symbol? key))
+                      (##symbol->string key)
+                      key))
+               (val (##cadr pl))
+               (rest (##cddr pl)))
+        (set! alist (##cons (##cons key val) alist))
+        (lp rest)))))
+
+(def (jso . plist)
+  (if (null? plist) (##inline-host-expression "g_host2scm({});")
+  (new-plist->jso plist)))
+
+
+{%js#ref%}
+{%js#ref-set!%}
+
+(def (Object.keys obj)
+  (def js-obj (if (##foreign? obj) (js#scm->js obj) obj))
+  (def vkeys (##inline-host-expression "g_host2scm(Object.keys(@1@))" js-obj))
+  vkeys)
+
+(def (map-object fn obj)
+  (vector-map (lambda (k) (fn k (js#ref obj k))) (js#Object.keys obj)))
+
+
+(def (alert thing) (##inline-host-statement "var foo = (@1@);
+  var bar = typeof foo === 'string' ? foo : g_scm2host(foo)
+  alert(bar);" thing))
+
+;; (alert "New FFi")
+
+(def (js->foreign obj)
+  (##inline-host-expression "g_host2foreign(@1@);" obj))
+(def (foreign->js obj)
+  (if (not (##foreign? obj))
+    (##error "Not a foreign object"))
+  (##inline-host-expression "g_foreign2host(@1@);" obj))
+
+
+(def (scm->js obj)
+  (begin
+    (##inline-host-statement "var result;")
+    (##inline-host-statement "try {result = g_scm2host(@1@);} catch (e) {result = Error(e);}" obj)
+    (let ((result (##inline-host-expression "result;")))
+      (if (js->scm (##inline-host-expression "@1@ instanceof Error;" result))
+          (##error result)
+          result))))
+
+(def (js->scm obj)
+  (##inline-host-expression "g_host2scm(@1@);" obj))
+
+(def (JSON.stringify jso (f2host #t))
+  (let ((obj (if (and f2host (##foreign? jso)) (js#foreign->js jso) jso)))
+    (##inline-host-expression "g_host2scm(JSON.stringify(@1@));" obj)))
+
+(def (plist->jso plist)
+  (def jso (##make-vector 0))
+  (def (p->o p)
+    (if (null? p) jso
+        (begin ; (console.log p)
+               (set! jso (##vector-set!
+                          jso (##car p)
+                          (let ((obj (##cadr p)))
+                            (if (##foreign? obj)
+                              (##inline-host-expression "g_foreign2host(@1@);" obj)
+                             ; (if (##procedure? obj) obj
+                              (##inline-host-expression "g_scm2host(@1@);" obj)))))
+               (p->o (##cddr p)))))
+  (##inline-host-expression "Object.fromEntries(Object.entries(@1@));" (p->o plist)))
+
+#+end_src
+
+* The (new) Runtime :NOEXPORT:
+
+This ~.scm~ file is con'~cat~'ed at the end. It's just because Gerbil and Gambit
+treat namespaces slightly differently.
+
+#+begin_src scheme :tangle ../../gx/gxjs-gambc.scm
+(namespace (""))
+(define (apply . args) (##apply ##apply args))
+(define (string-append . strs) (##apply ##string-append strs))
+(define (error . args) (apply ##error args))
+;; (##include "header.scm")
+
+;; (##include "~~/lib/gambit#.scm")
+;; (##include "~~/lib/_gambit#.scm")
+;; (include "~~lib/_system#.scm")
+
+(##declare
+  (multilisp)
+  (extended-bindings)
+  (not safe)
+  (block)
+;;  (fixnum)
+  (inlining-limit 134)
+  (not run-time-bindings)
+)
+
+;;;============================================================================
+;;; _system // hmmm.. may be important
+(##define-macro (macro-define-equal-objs?
+                 equal-objs?
+                 params
+                 custom-recursion-handler
+                 .
+                 local-defines)
+
+  `(define (,equal-objs? obj1 obj2 ,@params)
+
+     ,@local-defines
+
+     ,@(if custom-recursion-handler
+           `()
+           `((define (table-equal obj1 obj2 ,@params)
+               (conj (gc-hash-table-equal (macro-table-gcht obj1)
+                                          obj2
+                                          ,@params)
+                     (if (macro-table-test obj1)
+                         (gc-hash-table-equal (macro-table-hash obj1)
+                                              obj2
+                                              ,@params)
+                         (true))))
+
+             (define (gc-hash-table-equal ht1 table2 ,@params)
+               (##declare (not interrupts-enabled))
+               (if (##gc-hash-table? ht1)
+                   (let loop ((i (macro-gc-hash-table-key0))
+                              ,@(map (lambda (p) `(,p ,p))
+                                     params))
+                     (if (##fx< i (##vector-length ht1))
+                         (let ((key1 (##vector-ref ht1 i)))
+                           (if (or (##eq? key1 (macro-unused-obj))
+                                   (##eq? key1 (macro-deleted-obj)))
+                               (let ()
+                                 (##declare (interrupts-enabled))
+                                 (loop (##fx+ i 2)
+                                       ,@params))
+                               (let* ((val1
+                                       (##vector-ref ht1 (##fx+ i 1)))
+                                      (val2
+                                       (##table-ref table2
+                                                    key1
+                                                    (macro-unused-obj))))
+                                 (conj (,equal-objs?
+                                        val1
+                                        val2
+                                        ,@params)
+                                       (let ()
+                                         (##declare (interrupts-enabled))
+                                         (loop (##fx+ i 2)
+                                               ,@params))))))
+                         (true)))))
+
+             (define (structure-equal obj1 obj2 type len ,@params)
+               (if (##not type) ;; have we reached root of inheritance chain?
+                   (true)
+                   (let ((fields (##type-fields type)))
+                     (let loop ((i*3 (##fx- (##vector-length fields) 3))
+                                (len len)
+                                ,@(map (lambda (p) `(,p ,p))
+                                       params))
+                       (if (##fx< i*3 0) ;; time to check inherited fields?
+                           (structure-equal obj1
+                                            obj2
+                                            (##type-super type)
+                                            len
+                                            ,@params)
+                           (let ((field-attributes
+                                  (##vector-ref fields (##fx+ i*3 1)))
+                                 (len-1
+                                  (##fx- len 1)))
+                             (if (##not (##fx= ;; equality-skip flag set?
+                                         (##fxand field-attributes 4)
+                                         0))
+                                 (loop (##fx- i*3 3) ;; don't check this field
+                                       len-1
+                                       ,@params)
+                                 (conj (,equal-objs? (##unchecked-structure-ref
+                                                      obj1
+                                                      len-1
+                                                      type
+                                                      #f)
+                                                     (##unchecked-structure-ref
+                                                      obj2
+                                                      len-1
+                                                      type
+                                                      #f)
+                                                     ,@params)
+                                       (loop (##fx- i*3 3)
+                                             len-1
+                                             ,@params)))))))))))
+
+     (macro-force-vars (obj1 obj2)
+       (if (##eq? obj1 obj2)
+           (begin
+             (profile! 0)
+             (true))
+           (cond ((##pair? obj1)
+                  (profile! 1)
+                  (if (##not (##pair? obj2))
+                      (false)
+                      ,(if custom-recursion-handler
+                           `(,custom-recursion-handler obj1 obj2 ,@params)
+                           `(recursion
+                             obj1
+                             obj2
+                             (conj (,equal-objs? (##car obj1)
+                                                 (##car obj2)
+                                                 ,@params)
+                                   (,equal-objs? (##cdr obj1)
+                                                 (##cdr obj2)
+                                                 ,@params))))))
+                 ((##vector? obj1)
+                  (profile! 2)
+                  (if (##not (##vector? obj2))
+                      (false)
+                      (let ((len (##vector-length obj1)))
+                        (if (##not (##fx= len (##vector-length obj2)))
+                            (false)
+                            ,(if custom-recursion-handler
+                                 `(,custom-recursion-handler obj1 obj2 ,@params)
+                                 `(recursion
+                                   obj1
+                                   obj2
+                                   (let loop ((i (##fx- len 1))
+                                              ,@(map (lambda (p) `(,p ,p))
+                                                     params))
+                                     (if (##fx< i 0)
+                                         (true)
+                                         (conj (,equal-objs?
+                                                (##vector-ref obj1 i)
+                                                (##vector-ref obj2 i)
+                                                ,@params)
+                                               (loop (##fx- i 1)
+                                                     ,@params))))))))))
+                 ((##fixnum? obj1)
+                  (profile! 3)
+                  (if (and (##fixnum? obj2)
+                           (##fx= obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##bignum? obj1)
+                  (profile! 4)
+                  (if (and (##bignum? obj2)
+                           (##exact-int.= obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##ratnum? obj1)
+                  (profile! 5)
+                  (if (and (##ratnum? obj2)
+                           (##ratnum.= obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##flonum? obj1)
+                  (profile! 6)
+                  (if (and (##flonum? obj2)
+                           (##fleqv? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##cpxnum? obj1)
+                  (profile! 7)
+                  (if (and (##cpxnum? obj2)
+                           (##eqv? (macro-cpxnum-real obj1)
+                                   (macro-cpxnum-real obj2))
+                           (##eqv? (macro-cpxnum-imag obj1)
+                                   (macro-cpxnum-imag obj2)))
+                      (true)
+                      (false)))
+                 ((macro-table? obj1)
+                  (profile! 8)
+                  (if (##not (and (macro-table? obj2)
+                                  (##fx= (macro-table-flags obj1)
+                                         (macro-table-flags obj2))
+                                  (##eq? (macro-table-test obj1)
+                                         (macro-table-test obj2))
+                                  (if (macro-table-test obj1)
+                                      (##eq? (macro-table-hash obj1)
+                                             (macro-table-hash obj2))
+                                      #t)
+                                  (##fx= (##table-length obj1)
+                                         (##table-length obj2))))
+                      (false)
+                      ,(if custom-recursion-handler
+                           `(,custom-recursion-handler
+                             obj1
+                             obj2
+                             ,@params)
+                           `(recursion
+                             obj1
+                             obj2
+                             (table-equal
+                              obj1
+                              obj2
+                              ,@params)))))
+                 ((##structure? obj1)
+                  (profile! 9)
+                  (if (##not (##structure? obj2))
+                      (false)
+                      (let ((type (##structure-type obj1)))
+                        (if (##not (##eq? (##type-id type)
+                                          (##type-id
+                                           (##structure-type obj2))))
+                            (false)
+                            (let ((len (##structure-length obj1)))
+                              (if (##not
+                                   (and (##fx=
+                                         len
+                                         (##structure-length obj2))
+                                        (##fx= ;; not opaque?
+                                         (##fxand
+                                          (##type-flags type)
+                                          1)
+                                         0)))
+                                  (false)
+                                  ,(if custom-recursion-handler
+                                       `(,custom-recursion-handler
+                                         obj1
+                                         obj2
+                                         ,@params)
+                                       `(recursion
+                                         obj1
+                                         obj2
+                                         (structure-equal
+                                          obj1
+                                          obj2
+                                          type
+                                          len
+                                          ,@params)))))))))
+                 ((##box? obj1)
+                  (profile! 10)
+                  (if (##not (##box? obj2))
+                      (false)
+                      ,(if custom-recursion-handler
+                           `(,custom-recursion-handler
+                             obj1
+                             obj2
+                             ,@params)
+                           `(recursion
+                             obj1
+                             obj2
+                             (,equal-objs?
+                              (##unbox obj1)
+                              (##unbox obj2)
+                              ,@params)))))
+                 ((##string? obj1)
+                  (profile! 11)
+                  (if (and (##string? obj2)
+                           (##string-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##u8vector? obj1)
+                  (profile! 12)
+                  (if (and (##u8vector? obj2)
+                           (##u8vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##s8vector? obj1)
+                  (profile! 13)
+                  (if (and (##s8vector? obj2)
+                           (##s8vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##u16vector? obj1)
+                  (profile! 14)
+                  (if (and (##u16vector? obj2)
+                           (##u16vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##s16vector? obj1)
+                  (profile! 15)
+                  (if (and (##s16vector? obj2)
+                           (##s16vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##u32vector? obj1)
+                  (profile! 16)
+                  (if (and (##u32vector? obj2)
+                           (##u32vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##s32vector? obj1)
+                  (profile! 17)
+                  (if (and (##s32vector? obj2)
+                           (##s32vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##u64vector? obj1)
+                  (profile! 18)
+                  (if (and (##u64vector? obj2)
+                           (##u64vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##s64vector? obj1)
+                  (profile! 19)
+                  (if (and (##s64vector? obj2)
+                           (##s64vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##f32vector? obj1)
+                  (profile! 20)
+                  (if (and (##f32vector? obj2)
+                           (##f32vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 ((##f64vector? obj1)
+                  (profile! 21)
+                  (if (and (##f64vector? obj2)
+                           (##f64vector-equal? obj1 obj2))
+                      (true)
+                      (false)))
+                 (else
+                  (profile! 22)
+                  (false)))))))
+(define-prim (##equal? obj1 obj2)
+
+  (##define-macro (profile! i)
+    `#f) ;; disable profiling
+
+  (macro-define-equal-objs?
+   equal-objs? ()
+   #f
+
+   (##define-macro (macro-table-hash obj) `#f)
+   (##define-macro (macro-table-gcht obj) `#f)
+
+   (##define-macro (true) `#t)
+   (##define-macro (false) `#f)
+
+   (##define-macro (recursion obj1 obj2 tail-expr)
+     tail-expr)
+
+   (##define-macro (conj equal-obj?-expr tail-expr)
+     `(and ,equal-obj?-expr ,tail-expr)))
+
+  (equal-objs? obj1 obj2))
+
+(define-prim (equal? obj1 obj2)
+  (##equal? obj1 obj2))
+;;;============================================================================
+
+;; sys
+;;; Type operations.
+
+
+(define-prim (##type obj))
+(define-prim (##type-cast obj type))
+(define-prim (##subtype obj))
+(define-prim (##subtype-set! obj subtype))
+
+;;; Basic type predicates.
+(define-prim (##subtyped? obj)
+  (##eq? (##type obj) (macro-type-subtyped)))
+
+(define-prim (##structure? obj)
+  (and (##subtyped? obj)
+       (##eq? (##subtype obj) (macro-subtype-structure))))
+
+;;;----------------------------------------------------------------------------
+
+;;;============================================================================
+;; Kernel
+(define ##os-system-version-string-saved
+  (let ()
+
+    (##define-macro (comp-version-string)
+      (c#compiler-version-string))
+
+    (macro-case-target
+     ((C)
+      (or ((c-lambda () char-string "___return(___STAMP_VERSION);"))
+          (comp-version-string)))
+     (else
+      (comp-version-string)))))
+
+(define-prim (##system-version-string)
+  ##os-system-version-string-saved)
+
+(define-prim (system-version-string)
+  (##system-version-string))
+
+
+;;;----------------------------------------------------------------------------
+
+;;; Garbage collection.
+
+(define (##execute-final-wills!)
+  ;; do nothing because wills are only implemented in C backend
+  #f)
+
+;;;----------------------------------------------------------------------------
+
+;;; Jobs.
+
+(define-prim (##make-jobs)
+  (macro-make-fifo))
+
+(define-prim (##add-job-at-tail! jobs job)
+  (macro-fifo-insert-at-tail! jobs job))
+
+(define-prim (##add-job! jobs job)
+  (macro-fifo-insert-at-head! jobs job))
+
+(define-prim (##execute-jobs! jobs)
+  (let loop ((lst (macro-fifo->list jobs)))
+    (if (##pair? lst)
+      (begin
+        ((##car lst))
+        (loop (##cdr lst))))))
+
+(define-prim (##execute-and-clear-jobs! jobs)
+  (let loop ((lst (macro-fifo-remove-all! jobs)))
+    (if (##pair? lst)
+      (begin
+        ((##car lst))
+        (loop (##cdr lst))))))
+
+(define-prim (##clear-jobs! jobs)
+  (macro-fifo-remove-all! jobs)
+  (##void))
+
+;;;----------------------------------------------------------------------------
+
+;;;----------------------------------------------------------------------------
+
+;;; Process exit.
+
+(define-prim (##exit-with-err-code-no-cleanup err-code)
+  (##declare (not interrupts-enabled))
+  (macro-case-target
+
+   ((js)
+    (##inline-host-statement
+     "
+      var code = g_scm2host(@1@);
+      if ((function () { return this !== this.window; })()) { // nodejs?
+        process.exit(code);
+      } else {
+        throw Error('process exiting with code=' + code);
+      }
+     "
+     (##fx- err-code 1)))
+
+   ((python)
+    (##inline-host-statement "exit(@1@)" (##fx- err-code 1)))
+
+   (else
+    (println "unimplemented ##exit-with-err-code-no-cleanup called with err-code=")
+    (println err-code))))
+
+(define ##exit-jobs (##make-jobs))
+
+;;; (##add-exit-job! thunk) can be called to add a job to
+;;; do when the program exits.  (##clear-exit-jobs!) clears the jobs.
+
+(define-prim (##add-exit-job! thunk)
+  (##add-job! ##exit-jobs thunk))
+
+(define-prim (##clear-exit-jobs!)
+  (##clear-jobs! ##exit-jobs))
+
+(define ##cleaning-up? #f)
+
+(define-prim (##exit-cleanup)
+  (let ((is-in-cleanup? ##cleaning-up?))
+    (set! ##cleaning-up? #t) ;; only do cleanup once
+    (if (##not is-in-cleanup?)
+        (begin
+          (##execute-and-clear-jobs! ##exit-jobs)
+          (##execute-final-wills!)))))
+
+(define-prim (##exit-with-err-code err-code)
+  (##exit-cleanup)
+  (##exit-with-err-code-no-cleanup err-code))
+
+(define-prim (##exit #!optional (status (macro-EXIT-CODE-OK)))
+  (##exit-with-err-code (##fx+ status 1)))
+
+(define-prim (##exit-abruptly #!optional (status (macro-EXIT-CODE-SOFTWARE)))
+  (##exit-with-err-code-no-cleanup (##fx+ status 1)))
+
+(define-prim (##exit-with-exception exc)
+  (##exit (macro-EXIT-CODE-SOFTWARE)))
+
+(implement-library-type-wrong-number-of-arguments-exception)
+
+(define-prim (##raise-wrong-number-of-arguments-exception-nary proc . args)
+  (##declare (not interrupts-enabled))
+  (##raise-wrong-number-of-arguments-exception proc args))
+
+#;(define-prim (##raise-wrong-number-of-arguments-exception proc args)
+  (##declare (not interrupts-enabled))
+  (macro-raise
+   (macro-make-wrong-number-of-arguments-exception proc args)))
+;;;----------------------------------------------------------------------------
+
+;;;============================================================================
+;; ;;; Structure support.
+
+;; ;; For bootstraping purposes the type of type objects must be
+;; ;; explicitly constructed.  It is as though the following form had
+;; ;; been used:
+;; ;;
+;; ;;   (define-type type
+;; ;;     id: ...special-type...
+;; ;;     (id      unprintable: equality-test:)
+;; ;;     (name    unprintable: equality-skip:)
+;; ;;     (flags   unprintable: equality-skip:)
+;; ;;     (super   unprintable: equality-skip:)
+;; ;;     (fields  unprintable: equality-skip:)
+;; ;;   )
+
+;; (##define-macro (macro-type-type-constant)
+;;   (let ((type-type
+;;          (##structure
+;;           #f ;; this structure's type descriptor is itself! (set later)
+;;           '##type-5
+;;           'type
+;;           '8
+;;           '#f
+;;           '#(id 1 #f name 5 #f flags 5 #f super 5 #f fields 5 #f))))
+;;     (##structure-type-set! type-type type-type) ;; self reference
+;;     `',type-type))
+
+;; (define ##type-type (macro-type-type-constant))
+
+;; (define-prim (##type-id type)
+;;   (##unchecked-structure-ref type 1 ##type-type ##type-id))
+
+;; (define-prim (##type-name type)
+;;   (##unchecked-structure-ref type 2 ##type-type ##type-name))
+
+;; (define-prim (##type-flags type)
+;;   (##unchecked-structure-ref type 3 ##type-type ##type-flags))
+
+;; (define-prim (##type-super type)
+;;   (##unchecked-structure-ref type 4 ##type-type ##type-super))
+
+;; (define-prim (##type-fields type)
+;;   (##unchecked-structure-ref type 5 ##type-type ##type-fields))
+
+;; (define-prim (##structure-direct-instance-of? obj type-id)
+;;   (and (##structure? obj)
+;;        (##eq? (##type-id (##structure-type obj))
+;;               type-id)))
+
+;; (define-prim (##structure-instance-of? obj type-id)
+;;   (and (##structure? obj)
+;;        (let loop ((c (##structure-type obj)))
+;;          (if (##eq? (##type-id c) type-id)
+;;            #t
+;;            (let ((super (##type-super c)))
+;;              (and super
+;;                   (loop super)))))))
+
+;; (define-prim (##type? obj)
+;;   (##structure-direct-instance-of? obj (##type-id ##type-type)))
+
+;; (define-prim (##structure-type obj)
+;;   (##vector-ref obj 0))
+
+;; (define-prim (##structure-type-set! obj type)
+;;   (##vector-set! obj 0 type))
+
+;; (define-prim (##make-structure type len)
+;;   (let ((s (##make-vector len)))
+;;     (##subtype-set! s (macro-subtype-structure))
+;;     (##vector-set! s 0 type)
+;;     s))
+
+;; (define-prim (##structure-length obj)
+;;   (##vector-length obj))
+
+;; (define-prim (##structure type . fields)
+
+;;   (define (make-struct fields i)
+;;     (if (##pair? fields)
+;;         (let ((s (make-struct (##cdr fields) (##fx+ i 1))))
+;;           (##unchecked-structure-set! s (##car fields) i type #f)
+;;           s)
+;;         (##make-structure type i)))
+
+;;   (make-struct fields 1))
+
+;; (define-prim (##structure-ref obj i type proc)
+;;   (if (##structure-instance-of? obj (##type-id type))
+;;     (##unchecked-structure-ref obj i type proc)
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##structure-ref)
+;;      (if proc (##list obj) (##list obj i type proc)))))
+
+;; (define-prim (##structure-set! obj val i type proc)
+;;   (if (##structure-instance-of? obj (##type-id type))
+;;     (begin
+;;       (##unchecked-structure-set! obj val i type proc)
+;;       (##void))
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##structure-set!)
+;;      (if proc (##list obj val) (##list obj val i type proc)))))
+
+;; (define-prim (##structure-set obj val i type proc)
+;;   (if (##structure-instance-of? obj (##type-id type))
+;;     (let ((result (##structure-copy obj)))
+;;       (##unchecked-structure-set! result val i type proc)
+;;       result)
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##structure-set)
+;;      (if proc (##list obj val) (##list obj val i type proc)))))
+
+;; (define-prim (##structure-cas! obj val oldval i type proc)
+;;   (if (##structure-instance-of? obj (##type-id type))
+;;     (begin
+;;       (##unchecked-structure-cas! obj val oldval i type proc)
+;;       (##void))
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##structure-cas!)
+;;      (if proc (##list obj val oldval) (##list obj val oldval i type proc)))))
+
+;; (define-prim (##direct-structure-ref obj i type proc)
+;;   (if (##structure-direct-instance-of? obj (##type-id type))
+;;     (##unchecked-structure-ref obj i type proc)
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##direct-structure-ref)
+;;      (if proc (##list obj) (##list obj i type proc)))))
+
+;; (define-prim (##direct-structure-set! obj val i type proc)
+;;   (if (##structure-direct-instance-of? obj (##type-id type))
+;;     (begin
+;;       (##unchecked-structure-set! obj val i type proc)
+;;       (##void))
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##direct-structure-set!)
+;;      (if proc (##list obj val) (##list obj val i type proc)))))
+
+;; (define-prim (##direct-structure-set obj val i type proc)
+;;   (if (##structure-direct-instance-of? obj (##type-id type))
+;;     (let ((result (##structure-copy obj)))
+;;       (##unchecked-structure-set! result val i type proc)
+;;       result)
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##direct-structure-set)
+;;      (if proc (##list obj val) (##list obj val i type proc)))))
+
+;; (define-prim (##direct-structure-cas! obj val oldval i type proc)
+;;   (if (##structure-direct-instance-of? obj (##type-id type))
+;;     (begin
+;;       (##unchecked-structure-cas! obj val oldval i type proc)
+;;       (##void))
+;;     (##raise-type-exception
+;;      1
+;;      type
+;;      (if proc proc ##direct-structure-cas!)
+;;      (if proc (##list obj val oldval) (##list obj val oldval i type proc)))))
+
+;; (define-prim (##unchecked-structure-ref obj i type proc))
+
+;; (define-prim (##unchecked-structure-set! obj val i type proc))
+
+;; (define-prim (##unchecked-structure-cas! obj val oldval i type proc)
+;;   ;; TODO: remove after bootstrap
+;;   (##vector-cas! obj i val oldval))
+
+;; (define-prim (##structure-copy obj)
+;;   (let* ((len (##structure-length obj))
+;;          (type (##structure-type obj))
+;;          (result (##make-structure type len)))
+;;     (let loop ((i (##fx- len 1)))
+;;       (if (##fx> i 0)
+;;           (begin
+;;             (##unchecked-structure-set!
+;;              result
+;;              (##unchecked-structure-ref obj i type ##structure-copy)
+;;              i
+;;              type
+;;              ##structure-copy)
+;;             (loop (##fx- i 1)))
+;;           result))))
+
+;;;----------------------------------------------------------------------------
+
+;;;============================================================================
+;; lists
+
+(##include "~~/lib/gambit/list/list#.scm")
+
+(define-fail-check-type pair 'pair)
+(define-fail-check-type pair-list 'pair-list)
+(define-fail-check-type list 'list)
+
+(define-prim (##pair? obj))
+
+(define-prim (pair? obj)
+  (macro-force-vars (obj)
+    (##pair? obj)))
+
+(define-prim (##cons*-aux x rest)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (if (pair? rests)
+      (let loop ((x x) (probe rest))
+        (let ((y (car probe))
+              (tail (cdr probe)))
+          (set-car! probe x)
+          (if (pair? tail)
+              (loop y tail)
+              (begin
+                (set-cdr! probe y)
+                rest))))
+      x))
+(define-prim (##cons* x . rest)
+  (##cons*-aux x rest))
+
+(define-prim (cons* x . rest)
+  (##cons*-aux x rest))
+
+(define-prim (##member obj lst #!optional (compare ##equal?))
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (let loop ((x lst))
+    (if (pair? x)
+        (if (compare obj (car x))
+            x
+            (loop (cdr x)))
+        #f)))
+
+(define-prim (member obj lst #!optional (c (macro-absent-obj)))
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+  (namespace ("" member)) ;; but not member to ##member
+
+  (macro-force-vars (c)
+    (let ((compare (if (eq? c (macro-absent-obj)) ##equal? c)))
+      (macro-check-procedure compare 3 (member obj lst c)
+        (let loop ((x lst))
+          (macro-force-vars (x)
+            (if (pair? x)
+                (let ((y (car x)))
+                  (if (compare obj y)
+                      x
+                      (loop (cdr x))))
+                (macro-check-list x 2 (member obj lst c)
+                  #f))))))))
+
+(define-prim (##reverse lst)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (let loop ((x lst) (result '()))
+    (if (pair? x)
+        (loop (cdr x) (cons (car x) result))
+        result)))
+
+(define-prim (reverse lst)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+  (namespace ("" reverse)) ;; but not reverse to ##reverse
+
+  (let loop ((x lst) (result '()))
+    (macro-force-vars (x)
+      (if (pair? x)
+          (loop (cdr x) (cons (car x) result))
+          (macro-check-list x 1 (reverse lst)
+            result)))))
+
+(define-prim (##make-list n #!optional (fill 0))
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (let loop ((i n) (result '()))
+    (if (fx> i 0)
+        (loop (fx- i 1) (cons fill result))
+        result)))
+
+(define-prim (make-list n #!optional (fill (macro-absent-obj)))
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+  (namespace ("" make-list)) ;; but not make-list to ##make-list
+
+  (macro-force-vars (n fill)
+    (macro-check-index n 1 (make-list n fill)
+      (if (eq? fill (macro-absent-obj))
+          (##make-list n)
+          (##make-list n fill)))))
+
+(define-prim (##length lst)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (let loop ((x lst) (n 0))
+    (if (pair? x)
+        (loop (cdr x) (fx+ n 1))
+        n)))
+
+(define-prim (length lst)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+  (namespace ("" length)) ;; but not length to ##length
+
+  (let loop ((x lst) (n 0))
+    (macro-force-vars (x)
+      (if (pair? x)
+          (loop (cdr x) (fx+ n 1))
+          (macro-check-list x 1 (length lst)
+            n)))))
+
+(define-prim (##append2 lst1 lst2)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (if (pair? lst1)
+      (cons (car lst1) (##append2 (cdr lst1) lst2))
+      lst2))
+
+(define-prim (##append-lists lst)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (if (pair? lst)
+      (let ((rev-lst (reverse lst)))
+        (let loop ((rev-lst (cdr rev-lst)) (result (car rev-lst)))
+          (if (pair? rev-lst)
+              (loop (cdr rev-lst)
+                    (##append2 (car rev-lst) result))
+              result)))
+      '()))
+
+(define-prim (##append
+              #!optional
+              (lst1 (macro-absent-obj))
+              (lst2 (macro-absent-obj))
+              #!rest
+              others)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+
+  (if (eq? lst2 (macro-absent-obj))
+      (if (eq? lst1 (macro-absent-obj))
+          '()
+          lst1)
+      (##append-lists (cons lst1 (cons lst2 others)))))
+
+(define-prim (append
+              #!optional
+              (lst1 (macro-absent-obj))
+              (lst2 (macro-absent-obj))
+              #!rest
+              others)
+
+  (include "~~lib/gambit/prim/prim#.scm") ;; map fx+ to ##fx+, etc
+  (namespace ("" append)) ;; but not append to ##append
+
+  (define (append-multiple head tail arg-num)
+    (if (null? tail)
+        head
+        (macro-force-vars (head)
+          (if (null? head)
+              (append-multiple (car tail) (cdr tail) (fx+ arg-num 1))
+              (list-expected-check
+               (append-multiple-non-null head
+                                         tail
+                                         arg-num
+                                         (fx+ arg-num 1)))))))
+
+  (define (append-multiple-non-null x lsts arg-num1 arg-num2)
+    ;; x!=(), returns fixnum on error
+    (let ((head (car lsts))
+          (tail (cdr lsts)))
+      (if (null? tail)
+          (append-2-non-null x head arg-num1)
+          (macro-force-vars (head)
+            (if (null? head)
+                (append-multiple-non-null x
+                                          tail
+                                          arg-num1
+                                          (fx+ arg-num2 1))
+                (let ((result
+                       (append-multiple-non-null head
+                                                 tail
+                                                 arg-num2
+                                                 (fx+ arg-num2 1))))
+                  (macro-if-checks
+                   (if (fixnum? result)
+                       result
+                       (append-2-non-null x result arg-num1))
+                   (append-2-non-null x result arg-num1))))))))
+
+  (define (append-2-non-null x y arg-num)
+    ;; x!=(), returns fixnum on error
+    (if (pair? x)
+        (let ((result (cons (car x) '())))
+          (let loop ((last result) (tail (cdr x)))
+            (macro-force-vars (tail)
+              (if (pair? tail)
+                  (let ((next (cons (car tail) '())))
+                    (set-cdr! last next)
+                    (loop next (cdr tail)))
+                  (begin
+                    (set-cdr! last y)
+                    (macro-if-checks
+                     (if (null? tail)
+                         result
+                         arg-num) ;; error: list expected
+                     result))))))
+        (macro-if-checks
+         arg-num ;; error: list expected
+         y)))
+
+  (define (list-expected-check result)
+    (macro-if-checks
+     (if (fixnum? result)
+         (macro-fail-check-list result (append lst1 lst2 . others))
+         result)
+     result))
+
+  (cond ((eq? lst2 (macro-absent-obj))
+         (if (eq? lst1 (macro-absent-obj))
+             '()
+             lst1))
+        ((null? others)
+         (macro-force-vars (lst1)
+           (if (null? lst1)
+               lst2
+               (list-expected-check (append-2-non-null lst1 lst2 1)))))
+        (else
+         (append-multiple lst1 (cons lst2 others) 1))))
+
+
+;;;============================================================================
+;;; Vectors
+;;;;----------------------------------------------------------------------------
+;;;----------------------------------------------------------------------------
+
+(##include "~~/lib/gambit/vector/vector#.scm")
+(define-prim-vector-procedures
+  vector
+  0
+  macro-no-force
+  macro-no-check
+  macro-no-check
+  #f
+  #f
+  define-map-and-for-each
+  ##equal?)
+
+;;;============================================================================
+;;; Nums
+;;;;----------------------------------------------------------------------------
+;;;----------------------------------------------------------------------------
+
+
+(define-prim (##+2 x y)
+  (##inline-host-expression
+   "((x, y) => { return x + y; })((@1@), (@2@));" (js#scm->js x) (js#scm->js y)))
+
+ (define-prim-nary (##+ x y)
+  0
+  x
+  (##+2 x y)
+  macro-no-force
+  macro-no-check)
+
+(define-prim-nary (+ x y)
+  0
+  (if (##number? x) x '(1))
+  (##+2 x y)
+  macro-force-vars
+  macro-no-check
+  (##pair? ##fail-check-number)
+  (##not ##raise-fixnum-overflow-exception))
+
+
+(define-prim (##/2 x y)
+  (##inline-host-expression
+   "((x, y) => { return x / y; })((@1@), (@2@));" (js#scm->js x) (js#scm->js y)))
+
+(define-prim-nary (##/ x y)
+  ()
+  (##inverse x)
+  (##/2 x y)
+  macro-no-force
+  macro-no-check)
+
+(define-prim-nary (/ x y)
+  ()
+  (##inverse x)
+  (##/2 x y)
+  macro-force-vars
+  macro-no-check
+  (##pair? ##fail-check-number)
+  (##not ##raise-divide-by-zero-exception))
+
+;;;============================================================================
+;;;============================================================================
+;;; strings
+(##include "~~lib/gambit/string/string#.scm")
+
+(define-prim-vector-procedures
+  string
+  #\nul
+  macro-force-vars
+  macro-check-char
+  macro-check-char-list
+  macro-test-char
+  ##fail-check-char
+  define-map-and-for-each
+  ##char=?)
+
+(define-prim-nary-bool (##string=? str1 str2)
+  #t
+  #t
+  (##string-equal? str1 str2)
+  macro-no-force
+  macro-no-check)
+
+(define-prim-nary-bool (string=? str1 str2)
+  #t
+  #t
+  (##string-equal? str1 str2)
+  macro-force-vars
+  macro-check-string)
+
+;;;===========================================
+
+;;; threads
+
+(##include "~~/lib/gambit/prim/thread#.scm")
+(##include "~~/lib/gambit/prim/thread-gambit#.scm")
+
+(define (##enable-interrupts!) #f)
+(macro-case-target
+
+ ((js)
+  (##inline-host-declaration "
+
+if ((function () { return this !== this.window; })()) { // nodejs?
+
+  os = require('os');
+  fs = require('fs');
+  vm = require('vm');
+  process = require('process');
+  child_process = require('child_process')
+
+  g_os_encode_error = function (exn) {
+    switch (exn.code) {
+      case 'EPERM':  return -1;
+      case 'ENOENT': return -2;
+      case 'EINTR':  return -4;
+      case 'EIO':    return -5;
+      case 'EBADF':  return -9;
+      case 'EACCES': return -13;
+      case 'EEXIST': return -17;
+      case 'EAGAIN': return -35;
+    }
+    return -8888;
+  };
+
+  g_os_decode_error = function (code) {
+    switch (code) {
+      case -1:  return 'EPERM (Operation not permitted)';
+      case -2:  return 'ENOENT (No such file or directory)';
+      case -4:  return 'EINTR (Interrupted system call)';
+      case -5:  return 'EIO (Input/output error)';
+      case -9:  return 'EBADF (Bad file descriptor)';
+      case -13: return 'EACCES (Permission denied)';
+      case -17: return 'EEXIST (File exists)';
+      case -35: return 'EAGAIN (Resource temporarily unavailable)';
+    }
+    return 'E??? (unknown error)';
+  };
+}
+
+g_current_time = function () {
+  return new Date().getTime() / 1000;
+};
+
+g_start_time = g_current_time();
+
+g_set_process_times = function (vect) {
+  var elapsed = g_current_time() - g_start_time;
+  vect.elems[0] = elapsed;
+  vect.elems[1] = 0.0;
+  vect.elems[2] = elapsed;
+  return vect;
+};
+
+G_Device = function (fd) {
+  this.fd = fd;
+  this.rbuf = new Uint8Array(1024);
+  this.rlo = 1;
+  this.rhi = 1; // 0 would mean EOF
+};
+
+g_os_debug = false;
+
+"))
+
+ ((python)
+  (##inline-host-declaration "
+
+import os
+import pwd
+import grp
+import stat
+import time
+import errno
+import getpass
+import functools
+
+def g_os_encode_error(exn):
+    e = exn.errno
+    if e == errno.EPERM:
+      return -1
+    elif e == errno.ENOENT:
+        return -2
+    elif e == errno.EINTR:
+        return -5
+    elif e == errno.EIO:
+        return -9
+    elif e == errno.EBADF:
+        return -13
+    elif e == errno.EACCES:
+        return -17
+    elif e == errno.EEXIST:
+        return -35
+    else:
+        return -8888
+
+def g_os_decode_error(code):
+    if code == -1:
+        return 'EPERM (Operation not permitted)'
+    elif code == -2:
+        return 'ENOENT (No such file or directory)'
+    elif code == -4:
+        return 'EINTR (Interrupted system call)'
+    elif code == -5:
+        return 'EIO (Input/output error)'
+    elif code == -9:
+        return 'EBADF (Bad file descriptor)'
+    elif code == -13:
+        return 'EACCES (Permission denied)'
+    elif code == -17:
+        return 'EEXIST (File exists)'
+    elif code == -35:
+        return 'EAGAIN (Resource temporarily unavailable)'
+    else:
+        return 'E??? (unknown error)'
+
+def g_current_time():
+    return time.time()
+
+g_start_time = g_current_time()
+
+def g_set_process_times(vect):
+    elapsed = g_current_time() - g_start_time
+    vect.elems[0] = elapsed
+    vect.elems[1] = 0.0
+    vect.elems[2] = elapsed
+    return vect
+
+class G_Device:
+
+    def __init__(self, fd):
+        self.fd = fd
+
+
+g_os_debug = False
+
+"))
+
+ (else))
+(define-prim (##os-condvar-select! devices timeout)
+  (##first-argument #f ##feature-port-fields)
+  (macro-case-target
+
+   ((js)
+    (##inline-host-declaration "
+
+g_os_condvar_select_should_sleep = true;
+
+g_os_condvar_select = function (devices_scm, timeout_scm) {
+
+  if (g_os_debug)
+    console.log('g_os_condvar_select(devices, timeout)  ***not fully implemented***');
+
+  var at_least_1_device = (devices_scm !== false &&
+                           devices_scm !== devices_scm.slots[g_BTQ_DEQ_NEXT]);
+
+  var timeout_ms;
+
+  if (timeout_scm === false)
+    timeout_ms = 0;
+  else if (timeout_scm === true)
+    timeout_ms = 999999;
+  else
+    timeout_ms = (timeout_scm.elems[0]-g_current_time()) * 1000;
+
+  if (!at_least_1_device || g_os_condvar_select_should_sleep) {
+
+    if (at_least_1_device)
+      timeout_ms = 10; // give browser time to refresh
+
+    g_os_condvar_select_should_sleep = false;
+
+    var ra = g_r0;
+    g_r0 = null; // exit trampoline
+
+    setTimeout(function () { g_trampoline(ra); }, // resume execution
+               Math.max(0, timeout_ms))
+
+    return g_host2scm(0);
+  }
+
+  g_os_condvar_select_should_sleep = true;
+
+  if (devices_scm !== false) {
+
+    var condvar_scm = devices_scm.slots[g_BTQ_DEQ_NEXT];
+
+    while (condvar_scm !== devices_scm) {
+      var owner = condvar_scm.slots[g_BTQ_OWNER];
+      var dev = g_foreign2host(condvar_scm.slots[g_CONDVAR_NAME]);
+      if (dev.fd === -4) // console?
+        condvar_scm.slots[g_BTQ_OWNER] = owner | 1; // mark as 'ready'
+      else
+        condvar_scm.slots[g_BTQ_OWNER] = owner & ~1; // mark as 'not ready'
+      condvar_scm = condvar_scm.slots[g_BTQ_DEQ_NEXT];
+    }
+
+  }
+
+  return g_host2scm(0);
+};
+
+")
+    (##inline-host-expression
+     "g_os_condvar_select(@1@,@2@)"
+     devices
+     timeout))
+
+   ((python)
+    (##inline-host-declaration "
+
+def g_os_condvar_select(devices_scm, timeout_scm):
+
+    if g_os_debug:
+        print('g_os_condvar_select(devices, timeout)  ***not fully implemented***')
+
+    return g_host2scm(0)  # no error
+
+")
+    (##inline-host-expression
+     "g_os_condvar_select(@1@,@2@)"
+     devices
+     timeout))
+
+   (else
+    (println "unimplemented ##os-condvar-select! called")
+    -5555)))
+;;;----------------------------------------------------------------------------
+
+;;; Implementation of blocked thread queues and timeout queues.
+
+(implement-btq) ;; defines ##btq-insert!, etc
+(implement-toq) ;; defines ##toq-insert!, etc
+
+;;;----------------------------------------------------------------------------
+
+;;; Inlined thread primitives.
+
+(define-prim (##current-thread))
+(define-prim (##current-processor))
+(define-prim (##current-processor-id))
+(define-prim (##processor id))
+(define-prim (##current-vm))
+
+(define-prim (##primitive-lock! btq i j))
+(define-prim (##primitive-trylock! btq i j))
+(define-prim (##primitive-unlock! btq i j))
+
+(define-prim (##object-before? x y))
+;;;----------------------------------------------------------------------------
+
+;; The procedure current-processor returns the processor executing the
+;; current thread.
+
+(define-prim (current-processor)
+
+  (##declare (not interrupts-enabled))
+
+  (macro-current-processor))
+
+;;;----------------------------------------------------------------------------
+
+;; The procedure processor? returns #t when the parameter is a processor
+;; and #f otherwise.
+
+(define-prim (processor? obj)
+
+  (##declare (not interrupts-enabled))
+
+  (macro-force-vars (obj)
+    (macro-processor? obj)))
+
+;;;----------------------------------------------------------------------------
+
+;; The procedure processor? returns #t when the parameter is a processor
+;; and #f otherwise.
+
+(define-prim (processor-id processor)
+
+  (##declare (not interrupts-enabled))
+
+  (macro-force-vars (processor)
+    (macro-check-processor processor 1 (processor-id processor)
+      (macro-processor-id processor))))
+
+;;;----------------------------------------------------------------------------
+;;;----------------------------------------------------------------------------
+
+;; The procedure current-thread returns the thread currently executing
+;; on the current processor.
+
+(define-prim (current-thread)
+
+  (##declare (not interrupts-enabled))
+
+  (macro-current-thread))
+
+;;;----------------------------------------------------------------------------
+
+;; The procedure thread? returns #t when the parameter is a thread
+;; and #f otherwise.
+
+(define-prim (thread? obj)
+
+  (##declare (not interrupts-enabled))
+
+  (macro-force-vars (obj)
+    (macro-thread? obj)))
+
+;;;----------------------------------------------------------------------------
+(##define-macro (macro-parameter-descr param)
+  `(##closure-ref ,param 1))
+
+(define-prim (##make-tgroup name parent)
+  (##declare (not interrupts-enabled))
+  (macro-make-tgroup name parent))
+
+(define-prim (##env-lookup env param)
+  (##declare (not interrupts-enabled))
+  (let ((hash-param
+         (macro-parameter-descr-hash
+          (macro-parameter-descr param))))
+
+    (define (lookup env)
+      (if (##null? env)
+        #f
+        (let* ((x
+                (macro-env-param-val env))
+               (param-x
+                (##car x))
+               (hash-param-x
+                (macro-parameter-descr-hash
+                 (macro-parameter-descr param-x))))
+          (cond ((##fx< hash-param hash-param-x)
+                 (lookup (macro-env-left env)))
+                ((or (##fx< hash-param-x hash-param)
+                     (##not (##eq? param-x param)))
+                 (lookup (macro-env-right env)))
+                (else
+                 x)))))
+
+    (lookup env)))
+
+;;;----------------------------------------------------------------------------
+
+(define-prim (##dynamic-env-bind denv thunk)
+  (##declare (not interrupts-enabled))
+  (let* ((current-thread
+          (macro-current-thread))
+         (old-denv
+          (macro-thread-denv current-thread)))
+    (macro-thread-denv-set! current-thread denv)
+    (let ((x (macro-env-param-val (macro-denv-local denv))))
+      (macro-thread-denv-cache1-set! current-thread x)
+      (macro-thread-denv-cache2-set! current-thread x)
+      (macro-thread-denv-cache3-set! current-thread x)
+      (let* ((results ; may get bound to a multiple-values object
+              (thunk))
+             (current-thread
+              (macro-current-thread)))
+        (macro-thread-denv-set! current-thread old-denv)
+        (let ((x (macro-env-param-val (macro-denv-local old-denv))))
+          (macro-thread-denv-cache1-set! current-thread x)
+          (macro-thread-denv-cache2-set! current-thread x)
+          (macro-thread-denv-cache3-set! current-thread x)
+          results)))))
+
+;;;----------------------------------------------------------------------------
+
+
+
+
+
+(define-prim (##dynamic-ref param)
+  (##declare (not interrupts-enabled))
+;;  (##inline-host-statement "console.log('thread', @1@, @2@, @3@)" param 1 1)
+  (cond ((##eq? param ##current-exception-handler)
+         (macro-current-exception-handler))
+        ((##eq? param ##current-input-port)
+         (macro-current-input-port))
+        ((##eq? param ##current-output-port)
+         (macro-current-output-port))
+        (else
+ #; (##inline-host-statement "console.log(' here now thread', @1@, @2@, @3@)"
+                           param (macro-current-thread) (macro-thread-denv-cache1 (current-thread)))
+         (let* ((current-thread
+                 (macro-current-thread))
+                (c1
+                 (macro-thread-denv-cache1 current-thread)))
+           (if (##eq? param (##car c1))
+             (##cdr c1)
+             (let ((c2 (macro-thread-denv-cache2 current-thread)))
+               (if (##eq? param (##car c2))
+                 (begin
+                   (macro-thread-denv-cache2-set! current-thread c1)
+                   (macro-thread-denv-cache1-set! current-thread c2)
+                   (##cdr c2))
+                 (let ((c3 (macro-thread-denv-cache3 current-thread)))
+                   (if (##eq? param (##car c3))
+                     (begin
+                       (macro-thread-denv-cache3-set! current-thread c2)
+                       (macro-thread-denv-cache2-set! current-thread c1)
+                       (macro-thread-denv-cache1-set! current-thread c3)
+                       (##cdr c3))
+                     (let* ((denv
+                             (macro-thread-denv current-thread))
+                            (x
+                             (##env-lookup (macro-denv-local denv) param)))
+                       (if x
+                         (begin
+                           (macro-thread-denv-cache3-set!
+                            current-thread
+                            (macro-thread-denv-cache2 current-thread))
+                           (macro-thread-denv-cache2-set!
+                            current-thread
+                            (macro-thread-denv-cache1 current-thread))
+                           (macro-thread-denv-cache1-set!
+                            current-thread
+                            x)
+                           (##cdr x))
+                         (macro-parameter-descr-value
+                          (macro-parameter-descr param)))))))))))))
+
+(define-prim (##dynamic-let param val thunk)
+  (##declare (not interrupts-enabled))
+  (cond ((##eq? param ##current-exception-handler)
+         (macro-dynamic-bind exception-handler
+          val
+          thunk))
+        ((##eq? param ##current-input-port)
+         (macro-dynamic-bind input-port
+          val
+          thunk))
+        ((##eq? param ##current-output-port)
+         (macro-dynamic-bind output-port
+          val
+          thunk))
+        (else
+         (let* ((param-val
+                 (##cons param val))
+                (denv
+                 (macro-thread-denv (macro-current-thread)))
+                (new-local-denv
+                 (##env-insert (macro-denv-local denv) param-val)))
+           (##dynamic-env-bind
+            (macro-make-denv
+             new-local-denv
+             (macro-denv-dynwind denv)
+             (macro-denv-interrupt-mask denv)
+             (macro-denv-debugging-settings denv)
+             (macro-denv-exception-handler denv)
+             (macro-denv-input-port denv)
+             (macro-denv-output-port denv)
+             (macro-denv-repl-context denv))
+            thunk)))))
+(define-prim (##dynamic-set! param val)
+  (##declare (not interrupts-enabled))
+  (cond ((##eq? param ##current-exception-handler)
+         (macro-current-exception-handler-set! val)
+         (##void))
+        ((##eq? param ##current-input-port)
+         (macro-current-input-port-set! val)
+         (##void))
+        ((##eq? param ##current-output-port)
+         (macro-current-output-port-set! val)
+         (##void))
+        (else
+         (let* ((current-thread
+                 (macro-current-thread))
+                (c1
+                 (macro-thread-denv-cache1 current-thread)))
+           (if (##eq? param (##car c1))
+             (begin
+               (##set-cdr! c1 val)
+               (##void))
+             (let ((c2 (macro-thread-denv-cache2 current-thread)))
+               (if (##eq? param (##car c2))
+                 (begin
+                   (macro-thread-denv-cache2-set! current-thread c1)
+                   (macro-thread-denv-cache1-set! current-thread c2)
+                   (##set-cdr! c2 val)
+                   (##void))
+                 (let ((c3 (macro-thread-denv-cache3 current-thread)))
+                   (if (##eq? param (##car c3))
+                     (begin
+                       (macro-thread-denv-cache3-set! current-thread c2)
+                       (macro-thread-denv-cache2-set! current-thread c1)
+                       (macro-thread-denv-cache1-set! current-thread c3)
+                       (##set-cdr! c3 val)
+                       (##void))
+                     (let* ((denv
+                             (macro-thread-denv current-thread))
+                            (x
+                             (##env-lookup (macro-denv-local denv) param)))
+                       (if x
+                         (begin
+                           (macro-thread-denv-cache3-set!
+                            current-thread
+                            (macro-thread-denv-cache2 current-thread))
+                           (macro-thread-denv-cache2-set!
+                            current-thread
+                            (macro-thread-denv-cache1 current-thread))
+                           (macro-thread-denv-cache1-set!
+                            current-thread
+                            x)
+                           (##set-cdr! x val)
+                           (##void))
+                         (begin
+                           (macro-parameter-descr-value-set!
+                            (macro-parameter-descr param)
+                            val)
+                           (##void)))))))))))))
+(define-prim (##env-insert env param-val)
+  (let* ((param
+          (##car param-val))
+         (hash-param
+          (macro-parameter-descr-hash
+           (macro-parameter-descr param))))
+
+    (define (insert env)
+      (if (##null? env)
+        (macro-make-env
+         param-val
+         '()
+         '())
+        (let* ((x
+                (macro-env-param-val env))
+               (param-x
+                (##car x))
+               (hash-param-x
+                (macro-parameter-descr-hash
+                 (macro-parameter-descr param-x))))
+          (cond ((##fx< hash-param hash-param-x)
+                 (macro-make-env
+                  x
+                  (insert (macro-env-left env))
+                  (macro-env-right env)))
+                ((or (##fx< hash-param-x hash-param)
+                     (##not (##eq? param-x param)))
+                 (macro-make-env
+                  x
+                  (macro-env-left env)
+                  (insert (macro-env-right env))))
+                (else
+                 (macro-make-env
+                  param-val
+                  (macro-env-left env)
+                  (macro-env-right env)))))))
+
+    (insert env)))
+
+(define-prim (##make-root-thread
+              thunk
+              name
+              tgroup
+              input-port
+              output-port)
+
+  (##declare (not interrupts-enabled))
+
+  (let* ((interrupt-mask
+          0)
+         (debugging-settings
+          0)
+         (local-binding
+          (##cons ##current-directory
+                  (macro-parameter-descr-value
+                   (macro-parameter-descr ##current-directory)))))
+
+    ;; these macros are defined to prevent the normal thread
+    ;; inheritance mechanism when a root thread is created
+
+    (##define-macro (macro-current-thread)
+      `#f)
+
+    (##define-macro (macro-thread-denv thread)
+      `#f)
+
+    (##define-macro (macro-denv-local denv)
+      `(macro-make-env local-binding '() '()))
+
+    (##define-macro (macro-denv-dynwind denv)
+      `##initial-dynwind)
+
+    (##define-macro (macro-denv-interrupt-mask denv)
+      `interrupt-mask)
+
+    (##define-macro (macro-denv-debugging-settings denv)
+      `debugging-settings)
+
+    (##define-macro (macro-denv-input-port denv)
+      `(##cons ##current-input-port input-port))
+
+    (##define-macro (macro-denv-output-port denv)
+      `(##cons ##current-output-port output-port))
+
+    (##define-macro (macro-thread-denv-cache1 thread)
+      `local-binding)
+
+    (##define-macro (macro-thread-denv-cache2 thread)
+      `local-binding)
+
+    (##define-macro (macro-thread-denv-cache3 thread)
+      `local-binding)
+
+    (##define-macro (macro-thread-floats thread)
+      `#f)
+
+    (##define-macro (macro-base-priority floats)
+      `(macro-thread-root-base-priority))
+
+    (##define-macro (macro-quantum floats)
+      `(macro-thread-root-quantum))
+
+    (##define-macro (macro-priority-boost floats)
+      `(macro-thread-root-priority-boost))
+
+    ;; create root thread
+
+    (macro-make-thread thunk name tgroup)))
+
+(define-prim (make-root-thread
+              thunk
+              #!optional
+              (n (macro-absent-obj))
+              (tg (macro-absent-obj))
+              (ip (macro-absent-obj))
+              (op (macro-absent-obj)))
+  (macro-force-vars (thunk n tg ip op)
+    (let* ((name
+            (if (##eq? n (macro-absent-obj))
+              (##void)
+              n))
+           (tgroup
+            (if (##eq? tg (macro-absent-obj))
+              (macro-thread-tgroup (macro-current-thread))
+              tg))
+           (input-port
+            (if (##eq? ip (macro-absent-obj))
+              ##stdin-port
+              ip))
+           (output-port
+            (if (##eq? op (macro-absent-obj))
+              ##stdout-port
+              op)))
+      (macro-check-procedure thunk 1 (make-root-thread thunk n tg ip op)
+        (macro-check-tgroup tgroup 3 (make-root-thread thunk n tg ip op)
+          (macro-check-input-port input-port 4 (make-root-thread thunk n tg ip op)
+            (macro-check-output-port output-port 5 (make-root-thread thunk n tg ip op)
+              (##make-root-thread thunk name tgroup input-port output-port))))))))
+
+(define (##startup-processor!)
+
+  (declare (not interrupts-enabled))
+
+  (macro-processor-init! (##current-processor) (##current-processor-id))
+  (##primitive-unlock! (##current-processor) 1 9)
+
+  (let* ((tgroup
+          (##make-tgroup 'local #f))
+         (input-port
+          ##stdin-port)
+         (output-port
+          ##stdout-port)
+         (thread
+          (##make-root-thread
+           #f
+           'local
+           tgroup
+           input-port
+           output-port)))
+
+    (macro-processor-current-thread-set!
+     (macro-current-processor)
+     thread)
+
+    (##btq-insert! (macro-current-processor) thread)
+    )
+
+  (##enable-interrupts!)
+
+  (let loop ()
+    (declare (interrupts-enabled))
+    (##os-condvar-select! #f #t) ;; wait for interrupt
+    (loop)))
+
+;;; ====================
+(define-prim (##parameter? obj)
+  (##declare (not interrupts-enabled))
+  (and (##procedure? obj)
+       (##closure? obj)
+       (##eq? (##closure-code obj)
+              (##closure-code ##current-exception-handler))))
+
+(##define-macro (macro-parameter-descr param)
+  `(##closure-ref ,param 1))
+
+(define-prim (##parameterize1 param val thunk)
+  (##declare (not interrupts-enabled))
+  (macro-check-procedure param 1 (##parameterize1 param val thunk)
+    (macro-check-procedure thunk 3 (##parameterize1 param val thunk)
+      (if (##parameter? param)
+        (##dynamic-let
+         param
+         ((macro-parameter-descr-filter (macro-parameter-descr param)) val)
+         thunk)
+        (let ((save (param)))
+          (##dynamic-wind
+           (lambda () ;; before
+             (param val))
+           thunk
+           (lambda () ;; after
+             (param save))))))))
+
+(##include "~~lib/gambit/parameter/parameter#.scm")
+(define-prim (##partial-bit-reverse i)
+
+  (##define-macro (bit n)
+    `(##fxarithmetic-shift-left
+      (##fxand i ,(expt 2 n)) ,(- 28 (* 2 n))))
+
+  (##fx+
+   (bit 0)
+   (##fx+
+    (bit 1)
+    (##fx+
+     (bit 2)
+     (##fx+
+      (bit 3)
+      (##fx+
+       (bit 4)
+       (##fx+
+        (bit 5)
+        (##fx+
+         (bit 6)
+         (##fx+
+          (bit 7)
+          (##fx+
+           (bit 8)
+           (##fx+
+            (bit 9)
+            (##fx+
+             (bit 10)
+             (##fx+
+              (bit 11)
+              (##fx+
+               (bit 12)
+               (##fx+
+                (bit 13)
+                (bit 14))))))))))))))))
+
+;;; _t-univ-4
+;;;
+;;;
+
+
+
+;;;----------------------------------------------------------------------------
+;;;
+;;;
+
+
+(define ##parameter-counter 0)
+
+(define-prim (##make-parameter
+              init
+              #!optional
+              (f (macro-absent-obj)))
+  (let ((filter
+         (if (##eq? f (macro-absent-obj))
+           (lambda (x) x)
+           f)))
+    (macro-check-procedure filter 2 (make-parameter init f)
+      (let* ((val
+              (filter init))
+             (new-count
+              (+ ##parameter-counter 1)))
+        ;; Note: it is unimportant if the increment of
+        ;; ##parameter-counter is not atomic; it simply means a
+        ;; possible close repetition of the same hash code
+        (set! ##parameter-counter new-count)
+        (let ((descr
+               (macro-make-parameter-descr
+                val
+                (##partial-bit-reverse new-count)
+                filter)))
+          (letrec ((param
+                    (lambda (#!optional (new-val (macro-absent-obj)))
+                      (if (##eq? new-val (macro-absent-obj))
+                        (##dynamic-ref param)
+                        (##dynamic-set!
+                         param
+                         ((macro-parameter-descr-filter descr) new-val))))))
+            param))))))
+
+(define-prim (make-parameter init #!optional (f (macro-absent-obj)))
+  (macro-force-vars (f)
+    (##make-parameter init f)))
+
+;;;============================================================================
+
+(define (##os-path-normalize-directory path)
+  (##declare (not interrupts-enabled))
+  (macro-case-target
+
+   ((js)
+    (##inline-host-declaration "
+
+g_os_path_normalize_directory = function (path) {
+  if ((function () { return this !== this.window; })()) { // nodejs?
+    var old = process.cwd();
+    var dir;
+    if (path === false) {
+      dir = old;
+    } else {
+      try {
+        process.chdir(path);
+      } catch (exn) {
+        if (exn instanceof Error && exn.hasOwnProperty('code')) {
+          return g_host2scm(g_os_encode_error(exn));
+        } else {
+          throw exn;
+        }
+      }
+      dir = process.cwd();
+      process.chdir(old);
+    }
+    if (dir[dir.length-1] === '/' || dir[dir.length-1] === '\\\\') {
+      return g_host2scm(dir);
+    } else if (dir[0] === '/') {
+      return g_host2scm(dir + '/')
+    } else {
+      return g_host2scm(dir + '\\\\')
+    }
+  } else {
+    var loc = window.location.href;
+    var root = '/' + loc.slice(0, 1+loc.lastIndexOf('/'));
+    if (path === false) {
+      return g_host2scm(root);
+    } else {
+      return g_host2scm(root + path.slice((path[0] === '/') ? 1 : 0));
+    }
+  }
+};
+
+")
+    (##inline-host-expression "g_os_path_normalize_directory(g_scm2host(@1@))" path))
+
+   ((python)
+    (##inline-host-declaration "
+
+def g_os_path_normalize_directory(path):
+    old = os.getcwd()
+    if path is False:
+        dir = old
+    else:
+        try:
+            os.chdir(path)
+        except OSError as exn:
+            return g_host2scm(g_os_encode_error(exn))
+        dir = os.getcwd()
+        os.chdir(old)
+    if dir[-1] == '/' or dir[-1] == '\\\\':
+        return g_host2scm(dir)
+    elif dir[0] == '/':
+        return g_host2scm(dir + '/')
+    else:
+        return g_host2scm(dir + '\\\\')
+
+")
+    (##inline-host-expression "g_os_path_normalize_directory(g_scm2host(@1@))" path))
+
+   (else
+    (println "unimplemented ##os-path-normalize-directory called with path=")
+    (println path)
+    "/")))
+
+(define ##initial-current-directory
+  (let ((current-dir
+         (##os-path-normalize-directory #f)))
+    (if (##fixnum? current-dir)
+        (##exit-with-err-code current-dir)
+        current-dir)))
+
+(define-prim (##path-normalize-directory-existing path)
+  (let ((normalized-dir
+         (##os-path-normalize-directory (##path-expand path))))
+    (if (##fixnum? normalized-dir)
+        (##raise-os-exception #f normalized-dir ##current-directory path)
+        normalized-dir)))
+
+(define-prim (##current-directory-filter val)
+  (if (##eq? val (macro-absent-obj))
+      ##initial-current-directory
+      (macro-check-string val 1 (##current-directory val)
+        (##path-normalize-directory-existing val))))
+(define ##current-directory
+  (##make-parameter
+   (macro-absent-obj)
+   ##current-directory-filter))
+
+(define current-directory
+  ##current-directory)
+
+(define ##current-exception-handler
+  (##make-parameter
+   (lambda (exc)
+     (##thread-end-with-uncaught-exception! exc))
+   (lambda (val)
+     (macro-check-procedure val 1 (##current-exception-handler val)
+       val))))
+
+(define current-exception-handler
+  ##current-exception-handler)
+
+#;(define ##current-output-port
+  (##make-parameter
+   ##stdout-port
+   (lambda (val)
+     (macro-check-output-port val 1 (##current-output-port val)
+       val))))
+
+#;(define current-output-port
+  ##current-output-port)
+
+(##startup-processor!)
+#+end_src
+
+Now our Gerbil coded Gambit runtime, where everything starts with ##.
+
+#+begin_src scheme :tangle ../../gx/gxjs-rt.ss
+namespace: "#"
+
+(define (apply proc arg1 . rest)
+  (declare (not inline))
+  (if (##pair? rest)
+    (let loop ((prev arg1) (lst rest))
+      (let ((temp (##car lst)))
+        (##set-car! lst prev)
+        (let ((tail (##cdr lst)))
+          (if (##pair? tail)
+            (loop temp tail)
+            (begin
+              (##set-cdr! lst temp)
+              (##apply proc rest))))))
+    (##apply proc arg1)))
+
+(def (raise-wrong-number-of-arguments-exception proc args)
+  (##inline-host-statement
+   "((proc, args) => {
+     var name = (proc._name === undefined) ? proc : proc._name.name;
+     console.error('too many args for', name);
+      throw { name: 'wrong-number-of-arguments',
+              message: name + ' called with foo!',
+              name: name,
+              proc: proc, args: args }
+   })((@1@), (@2@));"
+   proc args))
+
+(def (raise-type-exception n expected got fn  . args)
+  (##inline-host-statement
+   "console.error('type exception',
+                   (() => { fn = (@2@);
+                      if (fn !== undefined) { return fn._name.name };
+                    return fn; })(), 'expected', (@1@).name, 'got',  (@3@), (@4@))"
+    expected (car fn) got (cdr fn)))
+
+(def (fail-check-procedure proc . args)
+  (##inline-host-statement
+   "console.error('fail check procedure', (@1@), (@2@))"
+   proc args))
+
+(def (list->vector lst)
+  (def n (##length lst))
+  (def vec (##make-vector n))
+  (let loop ((i 0) (l lst))
+    (if (not (null? l))
+      (begin
+        (##vector-set! vec i (##car l))
+        (loop (+ i 1) (##cdr l)))))
+  vec)
+(def (reverse lst)
+  (let loop ((x lst) (result '()))
+    (if (pair? x)
+        (loop (cdr x) (cons (car x) result))
+        result)))
+
+(def (length lst)
+  (if (null? lst) 0 (+ 1 (length (##cdr lst)))))
+
+
+
+(def (vector->list vect)
+  (let loop ((lst '()) (i (- (##vector-length vect) 1)))
+    (if (< i 0)
+      lst
+      (loop (##cons (##vector-ref vect i) lst) (- i 1)))))
+
+(def (vector-append v . vs)
+  (def vvs (list->vector vs))
+  (##inline-host-expression "((v, vs) => { return v.concat.apply(v, vs); })((@1@), (@2@));" v vvs))
+
+(def (number? n?)
+  (##inline-host-expression
+   "(() => {
+      n = g_scm2host(@1@);
+      is_n = typeof n === 'number';
+      return g_host2scm(is_n);
+    })();" n?))
+
+(def (number->string n)
+  (##inline-host-expression "(() => { n = g_scm2host(@1@) ; return g_host2scm(n.toString()); })();" n))
+
+(def (error thing)
+  (if (##string? thing)
+    (set! thing (##inline-host-expression "g_scm2host(@1@)" thing)))
+  (##inline-host-statement "_e = (@1@);
+   if (_e instanceof Error) { throw _e } else { throw new Error(_e) };" thing))
+
+(def (string-append . strs)
+  (def (strapp s1 s2)
+    (let* ((l1 (##string-length s1))
+           (l2 (##string-length s2))
+           (l3 (+ l1 l2))
+           (s3 (##make-string l3)))
+      (let lp ((n 0))
+        (if (< n l1)
+          (##string-set! s3 n (##string-ref s1 n))
+          (if (>= n l1)
+            (##string-set! s3 n (##string-ref s2 (- n l1)))))
+      (if (< n l3) (lp (+ 1 n))))
+                                        ;(##apply string-append s3 rst)
+      s3))
+
+  (def str (car strs))
+
+  (let applp ((lst (cdr strs)))
+    (if (null? lst) str
+        (begin (set! str (strapp str (car lst)))
+               (applp (cdr lst))))))
+
+#+end_src
+
+And now a runtime coded in gerbil for gerbil after loading gerbil things.
+
+#+begin_src scheme :tangle ../../gx/gxjs-rt-post.ss
+namespace: "#"
+#;(def (##member obj lst . args)
+  ;; ~.args~ should really be (compare ##equal?) but we do not yet have such arg
+  ;; dispatch things defined it seems.
+  (def compare (if (null? args) ##equal (car args)))
+  (let loop ((x lst))
+    (if (pair? x)
+        (if (compare obj (car x))
+            x
+            (loop (cdr x)))
+        #f)))
+#;(def member ##member)
+(def (delete-duplicates lst)
+  (cond
+    ((null? lst)
+     '())
+    ((##member (car lst)
+             (cdr lst))
+     (##delete-duplicates (cdr lst)))
+    (else
+      (cons (car lst)
+            (##delete-duplicates (cdr lst))))))
+
+(def delete-duplication ##delete-duplicates)
+
+
+#+end_src
+
+* ~Index.vue~
+
+#+begin_src vue :tangle ../../src/pages/Index.vue :noweb yes
+<template>
+  <q-page>
+    <div>
+      <q-splitter
+        v-model="splitterModel"
+        >
+
+        <template v-slot:before>
+        <q-tabs
+          v-model="tab" no-caps
+          vertical
+          class="text-teal"
+        >
+          <q-tab name="index" icon="loyalty" label="GerbilJS" />
+          <q-tab name="repl" icon="keyboard" label="REPL" />
+          <q-tab name="weblog" icon="format_list_numbered" label="Log Files" />
+          <q-tab name="tests" icon="verified" label="Tests" />
+        </q-tabs>
+      </template>
+
+      <template v-slot:after>
+        <q-tab-panels
+          v-model="tab"
+          animated
+          swipeable
+          vertical
+          transition-prev="jump-up"
+          transition-next="jump-up"
+        >
+          <q-tab-panel name="index">
+            <span class="text-h4">GxQuasar</span>
+            <span class='text-subtitle2'>An overview of Gerbil Scheme in JavaScript</span>
+            <hr>
+            <p> Developing Web Applications takes knowledge of a lot of
+            languages.</p>
+            <p>Centralizing on a lisp dialect, in
+            particular <a href="https://cons.io"><b>Gerbil</b>: a meta-dialect
+            of Scheme</a>, makes things a lot easier. </p>
+
+            <p>To have a look at the code, see the <code>./gx/</code> directory in <a href="https://github.com/drewc/gx-quasar">the github repo. </a> </p>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="repl">
+            <div class="text-h4 q-mb-md">ReadEvalPrint(actually alert, then wait, before)Loop</div>
+
+            This is currently just a <a href="http://gambitscheme.org/">Gambit
+            Scheme</a> REPL. Gambit is the language that Gerbil
+            currently <a href="https://en.wikipedia.org/wiki/Source-to-source_compiler">transpiles</a>
+            to which itself can transpile to JavaScript.
+
+            <div class="full-width" contenteditable="true" id="gx_repl" style="max-width: 300px; height: 25vh; border: 2px solid black;">
+              (list "123" 456 #(7 8 9))
+            </div>
+
+            <q-btn color="red" @click="sourceCodeRun('gx_repl')"> Repl </q-btn>
+            <hr>
+
+          </q-tab-panel>
+
+          <q-tab-panel name="weblog">
+            <div class="text-h4 q-mb-md">Log Files</div>
+            <log-index></log-index>
+          </q-tab-panel>
+
+          <q-tab-panel name="tests">
+            <div class="text-h4 q-mb-md">Tests</div>
+            This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
+            <hr>
+            <div> <org-doc :document="orgDoc4"></org-doc> </div>
+          </q-tab-panel>
+        </q-tab-panels>
+      </template>
+
+    </q-splitter>
+  </div>
+  </q-page>
+</template>
+
+<script>
+import { Loading } from 'quasar'
+import LogIndex from 'components/LogIndex.vue'
+
+var wp = (window !== undefined) ? window : global
+wp.Prism = wp.Prism || {}
+wp.Prism.manual = true
+import 'prismjs/prism.js'
+import 'prismjs/themes/prism.css'
+import 'prismjs/components/prism-scheme.js'
+import 'prismjs/components/prism-bash.js'
+import 'prismjs/components/prism-lisp.js'
+import 'prismjs/components/prism-json.js'
+
+import { OrgDoc } from 'components/org/OrgDoc.gx.js'
+import orgDoc4 from 'app/public/log/0004_Nested-Components.js'
+
+export default {
+  name: 'PageIndex',
+  components: {
+    LogIndex,
+    OrgDoc
+  },
+  data () {
+    return {
+      tab: 'tests',
+      splitterModel: 20,
+      orgDoc4: orgDoc4
+    }
+  },
+  mounted: function () {
+    this.$nextTick(function () {
+    // Code that will run only after the
+    // entire view has been re-rendered
+    //  Prism.highlightAll()
+    })
+  },
+  methods: {
+    sourceCodeRun (id) {
+      var scRun = false;
+      (async () => {
+        if (!scRun) {
+          Loading.show()
+          const { sourceCodeRun, evalElement } = await import('app/public/gambit-repl.js')
+          scRun = sourceCodeRun
+          evalElement('yay!!')
+          Loading.hide()
+        }
+        var val = scRun(id)
+        alert('=> ' + val)
+      })()
+    }
+  }
+}
+</script>
+#+end_src
+
+
+
+
+
+* Build time
+
+Now to embed everything into a ~:js~ *Gerbil* package.
+
+#+begin_src scheme :tangle ../../gx/gerbil.pkg
+(package: js)
+#+end_src
+
+We'll have 3 steps.
+
+ 1) ~gxjs~ :: Our basic run time
+ 2) All the lazy modules
+ 3) The gambit repl (done the old way)
+
+Our ~_comp~ shell function takes a ~.ss~, makes a ~static/.scm~ and compiles that to a ~.js~.
+
+#+begin_src shell :noweb-ref compiler-shell
+_gxc () {
+    _givr="gxc -d . -S -static $1"
+ echo "--- Compiling $_givr"; $_givr || exit 1 ;
+}
+_statics=""
+
+_gsc () {
+ _js=$(basename $1 .scm).js
+ _js=`echo $_js | sed 's/js__\(.*\)/\1/'`
+ _statics="$_statics $1"
+
+  echo "--- compiling $1 to $_js "
+ if [[ -z $2 ]]
+ then
+        gsc -target js -prelude '(include "~~lib/_gambit#.scm")' -o $_js  $1 || exit 2; echo;
+ else
+     gsc -target js -prelude '(include "~~lib/_gambit#.scm")' -o $_js -e '(include "gerbil/runtime/gx-gambc#.scm")' $1 || exit 2; echo;
+ fi
+}
+
+_comp () {
+ _fn=$(basename $1 .ss)
+ _st=static/js__$_fn.scm
+
+  echo $@;
+ _gxc $1;
+  if  [[ -e $2 ]] ; then cp $_st $_st.pre ; cat $2 >> $_st ; fi
+  if  [[ -e $3 ]] ; then cat $3 >> $_st ; fi
+  if  [[ -e $4 ]] ; then cat $4 >> $_st ; fi
+
+
+ _gsc $_st $2;
+
+  if  [[ -e $2 ]] ; then cp $_st.pre $_st ; fi
+
+ }
+#+end_src
+
+** Build ~gxjs~
+
+#+begin_src shell :noweb-ref build-gxjs
+gxc -v syntax.ss
+gxc -d . -S -static gxjs-rt-post.ss
+_comp gxjs-fixes.ss
+_comp syntax.ss
+_comp gxjs-init.ss
+_comp gxjs-rt.ss gxjs-gambc.scm gerbil/runtime/gx-gambc0.scm static/js__gxjs-rt-post.scm
+_comp gxjs-ffi.ss
+
+
+echo "Compiling a gxjs-link.js file from our statics and the _gambit.js runtime."
+gsc -target js -o gxjs-link.js -link $_statics
+
+_gxjs_rt='cat gxjs-link.js gxjs-fixes.js syntax.js gxjs-init.js gxjs-rt.js gxjs-ffi.js > gxjs.js'; echo making exec: $_gxjs_rt; bash -c "$_gxjs_rt";
+
+cp gxjs.js ../public/
+#+end_src
+
+** Now the full gambit repl
+
+This time we try without the module reset/init.
+
+#+begin_src shell :noweb-ref build-repl
+_comp lazy-gambit-repl.ss
+_lazy="cat lazy-gambit-repl.js $(gsc -e '(display (path-expand "~~lib/_gambit.js"))')  > gambit-repl.js"
+echo Building the gambit repl: \"$_lazy\"; bash -c "$_lazy";
+cp gambit-repl.js ../public
+#+end_src
+
+
+#+begin_src scheme :tangle ../../gx/lazy-gambit-repl.ss
+(import :gerbil/gambit)
+(declare (extended-bindings))
+
+(##inline-host-statement
+ "exports.evalElement = (arg) => {
+  alert('Lazy? This is working without the reset Hello ' + arg)
+}"
+)
+
+(define (document.getElementById id)
+  (##inline-host-expression "g_host2foreign(document.getElementById(g_scm2host(@1@)))" id))
+
+(define (Element.innerText-ref elem)
+  (##inline-host-expression "g_host2scm(g_foreign2host(@1@).innerText)" elem))
+
+(define (g-sourceCodeRun id)
+  (let* ((elem (document.getElementById id))
+         (code (Element.innerText-ref elem)))
+    (let ((expr (cons '##begin (with-input-from-string code read-all))))
+      (eval expr))
+
+    ))
+
+(##inline-host-declaration "g_sourceCodeRun = function () { alert('sourceCodeRun'); };")
+
+(##inline-host-statement "
+g_sourceCodeRun = g_scm2host(@1@);
+exports.sourceCodeRun = g_sourceCodeRun;" g-sourceCodeRun)
+
+#+end_src
+
+* ~build.sh~: A simple build script :noexport:
+
+#+begin_src shell :tangle ../../build.sh  :shebang "#!/usr/bin/env bash" :noweb yes
+_dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+echo dir: $_dir;
+_cd="cd $_dir/gx"; echo $_cd ; $_cd;
+
+{%compiler-shell%}
+
+{%build-gxjs%}
+
+{%build-modules%}
+
+{%build-repl%}
+
+#+end_src
+
+#+RESULTS:
+
+* Conclusion
+
+This really helped to see how things can come together. Now, of course, it's
+time to split things up into their different projects.
+
+For now, make this live and seek some praise :).
+
+* Footnotes
+
+[fn:vue]
+#+begin_quote
+The Progressive JavaScript Framework
+
+—https://vuejs.org/
+#+end_quote
+
+[fn:g]
+#+begin_quote
+Gerbil is a meta-dialect of Scheme with post-modern features
+
+— https://cons.io/
+#+end_quote
+
+[fn:o]
+#+begin_quote
+Org mode is for keeping notes, maintaining to-do lists, planning projects,
+authoring documents, computational notebooks, literate programming and more — in
+a fast and effective plain text system.
+
+—https://orgmode.org/
+#+end_quote
+
+[fn:q]
+#+begin_quote
+Quasar (pronounced /ˈkweɪ.zɑɹ/) is an MIT licensed open-source Vue.js based
+framework, which allows you as a web developer to quickly create responsive++
+websites/apps in many flavours:
+
+ - SPAs (Single Page App)
+ - SSR (Server-side Rendered App) (+ optional PWA client takeover)
+ - PWAs (Progressive Web App)
+ - BEX (Browser Extension)
+ - Mobile Apps (Android, iOS, …) through Cordova or Capacitor
+ - Multi-platform Desktop Apps (using Electron)
+
+Quasar’s motto is: write code once and simultaneously deploy it as a website, a
+Mobile App and/or an Electron App. Yes, one codebase for all of them, helping
+you develop an app in record time by using a state-of-the-art CLI and backed by
+best-practice, blazing fast Quasar web components.
+
+When using Quasar, you won’t need additional heavy libraries like Hammer.js,
+Moment.js or Bootstrap. It’s got those needs covered internally, and all with a
+small footprint!
+
+—https://quasar.dev/introduction-to-quasar
+#+end_quote
+
+[fn:wd]
+#+begin_quote
+Linux
+Use AltGr- (en dash) or AltGr⇧ Shift- (em dash).
+If you have a compose key:
+
+Use Compose--. (en dash) or Compose--- (em dash).
+—https://en.wikipedia.org/wiki/Wikipedia:How_to_make_dashes
+#+end_quote
+
+[fn:emd]
+#+begin_quote
+Use an em dash when attributing a quote.
+
+"You can never be overdressed or overeducated." —Oscar Wilde
+
+—https://communications.uoregon.edu/brand/punctuation#dashes
+#+end_quote
+
+[fn:mfc] Mozilla! https://developer.mozilla.org/en-US/docs/Web/HTML/Element/figcaption
+
+[fn:vac]
+#+begin_quote
+In large applications, we may need to divide the app into smaller chunks and
+only load a component from the server when it’s needed. To make that easier, Vue
+allows you to define your component as a factory function that asynchronously
+resolves your component definition. Vue will only trigger the factory function
+when the component needs to be rendered and will cache the result for future
+re-renders. For example:
+
+#+begin_src javascript
+Vue.component('async-example', function (resolve, reject) {
+  setTimeout(function () {
+    // Pass the component definition to the resolve callback
+    resolve({
+      template: '<div>I am async!</div>'
+    })
+  }, 1000)
+})
+#+end_src
+
+As you can see, the factory function receives a resolve callback, which should be called when you have retrieved your component definition from the server. You can also call reject(reason) to indicate the load has failed.
+
+ --[[https://vuejs.org/v2/guide/components-dynamic-async.html#Async-Components][Vue.js Async Components]]
+#+end_quote
+
+[fn:42] Can it actually reference another footnote here?[fn:oxjson].
+
+[fn:vdom] https://vuejs.org/v2/guide/render-function.html#The-Virtual-DOM
+
+[fn:prism] https://prismjs.com/
+
+[fn:lwf] https://en.wikipedia.org/wiki/Literate_programming#Workflow
+
+[fn:vuerf] https://vuejs.org/v2/guide/render-function.html#Functional-Components
+
+[fn:oxjson] https://github.com/jlumpe/ox-json
+
+[fn:rwe] Currently the royal "we".
+
+# Local Variables:
+# org-babel-noweb-wrap-start: "{%"
+# org-babel-noweb-wrap-end: "%}"
+# End:

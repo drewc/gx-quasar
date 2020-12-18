@@ -66,13 +66,8 @@
           <q-tab-panel name="tests">
             <div class="text-h4 q-mb-md">Tests</div>
             This is where the tests come to lie. Reading the logs may help to see what they are and what they do.
-            <js-button-counter></js-button-counter>
-            <render-js-button-counter></render-js-button-counter>
-            <render-button-counter></render-button-counter>
-            <button-counter></button-counter>
-            <lazy-button-counter></lazy-button-counter>
-            <q-btn color="red" @click="Hello('WOrld! Tahgle!')"> Hello World</q-btn>
-            <q-btn color="red" @click="Test('WOrld! Tahgle!')"> Test function</q-btn>
+            <hr>
+            <div> <org-doc :document="orgDoc4"></org-doc> </div>
           </q-tab-panel>
         </q-tab-panels>
       </template>
@@ -83,41 +78,43 @@
 </template>
 
 <script>
-import { Hello } from 'app/public/hello.js'
-import { ButtonCounter } from 'app/public/vue.js'
-import { lazyButtonCounter, renderButtonCounter } from 'app/public/button-counter.js'
-import { Test } from 'app/public/gambit-module-test.js'
 import { Loading } from 'quasar'
 import LogIndex from 'components/LogIndex.vue'
 
-import jsButtonCounter from 'app/public/test-js-component.js'
-import renderJsButtonCounter from 'app/public/test-js-component-render.js'
+var wp = (window !== undefined) ? window : global
+wp.Prism = wp.Prism || {}
+wp.Prism.manual = true
+import 'prismjs/prism.js'
+import 'prismjs/themes/prism.css'
+import 'prismjs/components/prism-scheme.js'
+import 'prismjs/components/prism-bash.js'
+import 'prismjs/components/prism-lisp.js'
+import 'prismjs/components/prism-json.js'
+
+import { OrgDoc } from 'components/org/OrgDoc.gx.js'
+import orgDoc4 from 'app/public/log/0004_Nested-Components.js'
 
 export default {
   name: 'PageIndex',
   components: {
-    ButtonCounter,
-    jsButtonCounter,
-    lazyButtonCounter,
-    renderJsButtonCounter,
-    renderButtonCounter,
-    LogIndex
+    LogIndex,
+    OrgDoc
   },
   data () {
     return {
       tab: 'tests',
-      splitterModel: 20
+      splitterModel: 20,
+      orgDoc4: orgDoc4
     }
   },
+  mounted: function () {
+    this.$nextTick(function () {
+    // Code that will run only after the
+    // entire view has been re-rendered
+    //  Prism.highlightAll()
+    })
+  },
   methods: {
-    Hello (arg) {
-      console.log(Hello)
-      if (typeof Hello === 'function') { Hello('Hello: ' + arg) }
-    },
-    Test (arg) {
-      console.log(Test)
-      if (typeof Test === 'function') { Test('Test: ' + arg) }
-    },
     sourceCodeRun (id) {
       var scRun = false;
       (async () => {
